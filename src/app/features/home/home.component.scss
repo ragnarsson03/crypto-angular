@@ -1,0 +1,202 @@
+// Variables
+$bg-dark: #0f0f0f;
+$text-light: #ffffff;
+$accent-blue: #2979ff;
+$accent-green: #00e676;
+$glass-bg: rgba(255, 255, 255, 0.05);
+$glass-border: rgba(255, 255, 255, 0.1);
+
+:host {
+    display: block;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 10%, #1a2a3a 0%, $bg-dark 100%);
+    color: $text-light;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.home-container {
+    max-width: 900px;
+    width: 100%;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.main-title {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 3rem;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.welcome-card {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h2 {
+        font-size: 1.8rem;
+        font-weight: 500;
+    }
+
+    .divider {
+        width: 60px;
+        height: 4px;
+        background: $accent-blue;
+        margin: 1rem auto;
+        border-radius: 2px;
+    }
+
+    .subtitle {
+        color: #888;
+        font-size: 1.1rem;
+    }
+}
+
+.students-list {
+    background: $glass-bg;
+    border: 1px solid $glass-border;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    backdrop-filter: blur(10px);
+
+    h3 {
+        margin-top: 0;
+        color: #bbb;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid $glass-border;
+        padding-bottom: 0.5rem;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+
+        li {
+            color: #e0e0e0;
+            font-size: 1rem;
+
+            strong {
+                color: $accent-blue;
+            }
+        }
+    }
+}
+
+.actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+
+    .icon {
+        font-size: 2rem;
+    }
+
+    .text {
+        display: flex;
+        flex-direction: column;
+
+        .label {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .sub {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+
+        &::before {
+            opacity: 1;
+        }
+    }
+
+    &.sim-btn {
+        background: linear-gradient(135deg, rgba(41, 121, 255, 0.2) 0%, rgba(41, 121, 255, 0.1) 100%);
+        border: 1px solid rgba(41, 121, 255, 0.3);
+
+        &:hover {
+            border-color: $accent-blue;
+            box-shadow: 0 0 20px rgba(41, 121, 255, 0.2);
+        }
+    }
+
+    &.real-btn {
+        background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 230, 118, 0.1) 100%);
+        border: 1px solid rgba(0, 230, 118, 0.3);
+
+        &:hover {
+            border-color: $accent-green;
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.2);
+        }
+    }
+}
+
+footer {
+    margin-top: 4rem;
+    text-align: center;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

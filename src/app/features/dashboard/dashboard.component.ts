@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, inject, ChangeDetectionStrategy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription, interval } from 'rxjs';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CryptoDataService } from '../../core/services/crypto-data.service';
 import { CryptoAsset, WorkerData, WorkerResponse } from '../../core/models/crypto.model';
 import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-card.component';
@@ -8,17 +9,18 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, CryptoCardComponent],
+  imports: [CommonModule, CryptoCardComponent, RouterModule],
   template: `
     <div class="dashboard-container">
-      <div class="welcome-banner">
-        <h2>Bienvenido Profesor Carlos Márquez 👋</h2>
-      </div>
-
       <header>
         <div class="title-section">
-          <h1>Monitor de Criptomonedas en Simulado y en Vivo<span class="live-indicator">EN VIVO</span></h1>
-          <p>Análisis del mercado simulado y en tiempo real impulsado por Web Workers</p>
+          <button class="back-btn" (click)="goBack()">
+             ← Volver
+          </button>
+          <div class="title-text">
+            <h1>Monitor de Criptomonedas <span class="live-indicator">EN VIVO</span></h1>
+            <p>Análisis del mercado impulsado por Web Workers</p>
+          </div>
         </div>
         
         <div class="controls">
@@ -62,6 +64,9 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private cryptoService = inject(CryptoDataService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
   private priceSub?: Subscription;
   private timerSub?: Subscription;
   private worker: Worker | undefined;
@@ -79,12 +84,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.startSimulation();
+    // Read query params to determine initial mode
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (tabParam === 'real') {
+      this.switchTab('real');
+    } else {
+      this.switchTab('sim');
+    }
   }
 
   ngOnDestroy() {
     this.cleanupSubscriptions();
     this.worker?.terminate();
+  }
+
+  goBack() {
+    this.router.navigate(['/']);
   }
 
   // --- Tab Switching Logic ---
