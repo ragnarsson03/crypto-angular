@@ -17,8 +17,8 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
 
       <header>
         <div class="title-section">
-          <h1>Crypto Live Monitor <span class="live-indicator">EN VIVO</span></h1>
-          <p>Análisis de mercado en tiempo real impulsado por Web Workers</p>
+          <h1>Monitor de Criptomonedas en Simulado y en Vivo<span class="live-indicator">EN VIVO</span></h1>
+          <p>Análisis del mercado simulado y en tiempo real impulsado por Web Workers</p>
         </div>
         
         <div class="controls">
