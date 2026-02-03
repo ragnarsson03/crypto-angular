@@ -86,10 +86,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     // Read query params to determine initial mode
     const tabParam = this.route.snapshot.queryParamMap.get('tab');
+
+    // Force start based on param
     if (tabParam === 'real') {
-      this.switchTab('real');
+      this.activeTab.set('real');
+      this.startRealMarket();
     } else {
-      this.switchTab('sim');
+      this.activeTab.set('sim');
+      this.startSimulation();
     }
   }
 
