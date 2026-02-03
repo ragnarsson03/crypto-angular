@@ -11,10 +11,14 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
   imports: [CommonModule, CryptoCardComponent],
   template: `
     <div class="dashboard-container">
+      <div class="welcome-banner">
+        <h2>Bienvenido Profesor Carlos Márquez 👋</h2>
+      </div>
+
       <header>
         <div class="title-section">
-          <h1>Crypto Live Monitor <span class="live-indicator">LIVE</span></h1>
-          <p>Real-time market analysis powered by Web Workers</p>
+          <h1>Monitor de Criptomonedas en Simulado y en Vivo<span class="live-indicator">EN VIVO</span></h1>
+          <p>Análisis del mercado simulado y en tiempo real impulsado por Web Workers</p>
         </div>
         
         <div class="controls">
@@ -47,7 +51,7 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
           </app-crypto-card>
         } @empty {
           <div class="loading">
-            {{ activeTab() === 'real' ? 'Conectando con CoinGecko...' : 'Iniciando simulación...' }}
+            {{ activeTab() === 'real' ? 'Conectando con Binance API...' : 'Iniciando simulación...' }}
           </div>
         }
       </div>

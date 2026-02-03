@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { interval, map, Observable, switchMap, timer } from 'rxjs';
+import { interval, map, Observable, switchMap, timer, catchError, of } from 'rxjs';
 import { CryptoAsset } from '../models/crypto.model';
 
 @Injectable({
@@ -48,37 +48,49 @@ export class CryptoDataService {
 
     // --- MODO: Mercado Real (API) ---
     getRealPrices(): Observable<CryptoAsset[]> {
-        // Timer para polling cada 10s (CoinGecko rate limit friendly-ish)
+        // Timer para polling cada 10s
         return timer(0, 10000).pipe(
-            switchMap(() => this.fetchFromCoinGecko())
+            switchMap(() => this.fetchFromBinance())
         );
     }
 
-    private fetchFromCoinGecko(): Observable<CryptoAsset[]> {
-        const ids = 'bitcoin,ethereum,solana,cardano,polkadot';
-        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+    private fetchFromBinance(): Observable<CryptoAsset[]> {
+        // Símbolos de Binance para nuestros assets
+        const symbols = '["BTCUSDT","ETHUSDT","SOLUSDT","ADAUSDT","DOTUSDT"]';
+        // Codificar URL params correctamente es buena práctica, aunque Binance acepta raw string en algunos casos, mejor encoded.
+        const url = `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(symbols)}`;
 
-        return this.http.get<any>(url).pipe(
+        return this.http.get<any[]>(url).pipe(
             map(response => {
+                // Mapa inverso para relacionar Symbol de Binance -> ID Interno
+                const symbolToIdMap: { [key: string]: string } = {
+                    'BTCUSDT': 'bitcoin',
+                    'ETHUSDT': 'ethereum',
+                    'SOLUSDT': 'solana',
+                    'ADAUSDT': 'cardano',
+                    'DOTUSDT': 'polkadot'
+                };
+
                 return Array.from(this.assetsCache.values()).map(cachedAsset => {
-                    const data = response[cachedAsset.id];
-                    if (data) {
-                        // Si la API falla o devuelve incorrecto, podríamos usar un fallback aquí
-                        const newPrice = data.usd;
-                        // CoinGecko da el cambio de 24h, podríamos usarlo directamente o calcular el instantáneo.
-                        // Para consistencia con el worker, calcularemos el instantáneo en updateAssetInCache si quisiéramos,
-                        // pero aquí usaremos el dato de la API para visualización y el historial para el worker.
+                    // Buscar el objeto correspondiente en la respuesta de Binance
+                    // Binance retorna array: [{symbol: "BTCUSDT", price: "78684.12"}, ...]
+                    // Necesitamos encontrar el que coincida con el symbol mapeado
 
-                        // Ojo: updateAssetInCache calcula changePercent basado en el ULTIMO precio registrado por nosotros.
-                        const updated = this.updateAssetInCache(cachedAsset, newPrice);
+                    // Nota: Podríamos optimizar creando un Map de la respuesta primero, pero para 5 items filter/find está bien.
+                    const binanceTicket = response.find(item => symbolToIdMap[item.symbol] === cachedAsset.id);
 
-                        // Opcional: Sobreescribir el changePercent con el valor real de 24h de la API si se prefiere visualmente
-                        // updated.changePercent = data.usd_24h_change; 
-
-                        return updated;
+                    if (binanceTicket) {
+                        const newPrice = parseFloat(binanceTicket.price);
+                        return this.updateAssetInCache(cachedAsset, newPrice);
                     }
-                    return cachedAsset; // Fallback: devolver el último conocido si no viene en la API
+
+                    return cachedAsset; // Fallback: mantener último precio conocido
                 });
+            }),
+            // Resiliencia: Si falla la petición HTTP, devolvemos lo que hay en caché en lugar de romper el stream
+            catchError(err => {
+                console.error('Binance API Error (CORS/Network):', err);
+                return of(Array.from(this.assetsCache.values()));
             })
         );
     }
