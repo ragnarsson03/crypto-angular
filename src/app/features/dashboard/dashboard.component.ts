@@ -47,7 +47,7 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
           </app-crypto-card>
         } @empty {
           <div class="loading">
-            {{ activeTab() === 'real' ? 'Conectando con CoinGecko...' : 'Iniciando simulación...' }}
+            {{ activeTab() === 'real' ? 'Conectando con Binance API...' : 'Iniciando simulación...' }}
           </div>
         }
       </div>
