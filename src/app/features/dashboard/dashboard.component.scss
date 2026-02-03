@@ -19,6 +19,22 @@ $accent-red: #ff1744;
   margin: 0 auto;
 }
 
+.welcome-banner {
+  margin-bottom: 1.5rem;
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    background: linear-gradient(90deg, #ffffff, #b0b0b0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    border-bottom: 2px solid $accent-green;
+    padding-bottom: 4px;
+  }
+}
+
 header {
   margin-bottom: 2rem;
   border-bottom: 1px solid #333;
