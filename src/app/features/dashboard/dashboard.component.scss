@@ -19,22 +19,6 @@ $accent-red: #ff1744;
   margin: 0 auto;
 }
 
-.welcome-banner {
-  margin-bottom: 1.5rem;
-
-  h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0;
-    background: linear-gradient(90deg, #ffffff, #b0b0b0);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    display: inline-block;
-    border-bottom: 2px solid $accent-green;
-    padding-bottom: 4px;
-  }
-}
-
 header {
   margin-bottom: 2rem;
   border-bottom: 1px solid #333;
@@ -48,8 +32,27 @@ header {
   gap: 1rem;
 
   .title-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+
+    .back-btn {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: #fff;
+        color: #fff;
+      }
+    }
+
     h1 {
-      font-size: 2rem;
+      font-size: 1.8rem;
       font-weight: 300;
       margin: 0;
       display: flex;
@@ -70,8 +73,9 @@ header {
 
     p {
       color: $text-secondary;
-      margin-top: 0.5rem;
-      font-size: 1rem;
+      margin-top: 0.2rem;
+      font-size: 0.9rem;
+      margin-bottom: 0;
     }
   }
 
