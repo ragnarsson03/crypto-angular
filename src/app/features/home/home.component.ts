@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 
 @Component({
-    selector: 'app-home',
-    standalone: true,
-    imports: [CommonModule, RouterModule],
-    template: `
+  selector: 'app-home',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  template: `
     <div class="home-container">
       <div class="content">
         <h1 class="main-title">SISTEMA DE MONITOREO REACTIVO DE CRIPTOACTIVOS</h1>
@@ -21,9 +21,10 @@ import { Router, RouterModule } from '@angular/router';
           <h3>Equipo de Desarrollo:</h3>
           <ul>
             <li><strong>Frederick Durán:</strong> V-30.346.056</li>
-            <li><strong>Jonathan Alvarado:</strong> V-XXXXXXXX</li>
-            <li><strong>Juan Echenique:</strong> V-XXXXXXXX</li>
-            <li><strong>Miguel Eduardo:</strong> V-XXXXXXXX</li>
+            <li><strong>Jonathan Alvarado:</strong> V-22.749.638</li>
+            <li><strong>Juan Echenique:</strong> V-30.829.758</li>
+            <li><strong>Miguel Eduardo:</strong> V-6.914.378</li>
+            <li><strong>Yesmir Guzmán:</strong> V-20.130.682 </li>
           </ul>
         </div>
 
@@ -51,12 +52,12 @@ import { Router, RouterModule } from '@angular/router';
       </footer>
     </div>
   `,
-    styleUrls: ['./home.component.scss']
+  styleUrls: ['./home.component.scss']
 })
 export class HomeComponent {
-    constructor(private router: Router) { }
+  constructor(private router: Router) { }
 
-    navigateTo(mode: 'sim' | 'real') {
-        this.router.navigate(['/dashboard'], { queryParams: { tab: mode } });
-    }
+  navigateTo(mode: 'sim' | 'real') {
+    this.router.navigate(['/dashboard'], { queryParams: { tab: mode } });
+  }
 }
