@@ -6,12 +6,13 @@ addEventListener('message', ({ data }: { data: WorkerData }) => {
     if (data.action === 'CALCULATE_STATS') {
         const results: WorkerResponse[] = data.payload.map(asset => {
             return {
-                assetId: asset.id,
-                movingAverage: calculateMovingAverage(asset.history),
+                id: asset.id,
+                sma: calculateMovingAverage(asset.history),
                 volatility: calculateVolatility(asset.history)
             };
         });
 
+        // Send back the array of results directly
         postMessage(results);
     }
 });

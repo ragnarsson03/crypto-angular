@@ -1,50 +1,54 @@
 import { Injectable } from '@angular/core';
-import { Observable, interval, map, shareReplay } from 'rxjs';
+import { interval, map, Observable } from 'rxjs';
 import { CryptoAsset } from '../models/crypto.model';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CryptoDataService {
-
-    // Lista inicial de criptos (Requisito: Al menos 5)
-    private readonly INITIAL_DATA: CryptoAsset[] = [
-        { id: 'btc', symbol: 'BTC', name: 'Bitcoin', price: 45000, lastPrice: 45000, changePercent: 0, history: [] },
-        { id: 'eth', symbol: 'ETH', name: 'Ethereum', price: 3000, lastPrice: 3000, changePercent: 0, history: [] },
-        { id: 'sol', symbol: 'SOL', name: 'Solana', price: 100, lastPrice: 100, changePercent: 0, history: [] },
-        { id: 'ada', symbol: 'ADA', name: 'Cardano', price: 1.2, lastPrice: 1.2, changePercent: 0, history: [] },
-        { id: 'dot', symbol: 'DOT', name: 'Polkadot', price: 15, lastPrice: 15, changePercent: 0, history: [] }
+    private readonly initialAssets: CryptoAsset[] = [
+        { id: 'bitcoin', symbol: 'BTC', price: 45000, changePercent: 0, history: [] },
+        { id: 'ethereum', symbol: 'ETH', price: 3200, changePercent: 0, history: [] },
+        { id: 'solana', symbol: 'SOL', price: 110, changePercent: 0, history: [] },
+        { id: 'cardano', symbol: 'ADA', price: 0.65, changePercent: 0, history: [] },
+        { id: 'polkadot', symbol: 'DOT', price: 7.5, changePercent: 0, history: [] }
     ];
 
-    /**
-     * Stream principal que emite nuevos precios cada 200ms
-     * Requisito: RxJS interval de alta frecuencia
+    /*
+     * Returns an observable that emits updated asset prices every 200ms.
+     * Simulates price fluctuations and updates price history.
      */
-    getPricesStream(): Observable<CryptoAsset[]> {
+    getRealTimePrices(): Observable<CryptoAsset[]> {
         return interval(200).pipe(
-            map(() => this.simulateMarketMovement()),
-            shareReplay(1) // Para que múltiples suscriptores reciban el último valor
+            map(() => this.simulatePriceChanges())
         );
     }
 
-    // Lógica "Dummy" para simular que el precio sube o baja
-    private simulateMarketMovement(): CryptoAsset[] {
-        return this.INITIAL_DATA.map(asset => {
-            const volatility = 0.02; // 2% de volatilidad máxima
+    private simulatePriceChanges(): CryptoAsset[] {
+        return this.initialAssets.map(asset => {
+            // Simulate random price fluctuation (+/- 2%)
+            const volatility = 0.02;
             const change = 1 + (Math.random() * volatility - (volatility / 2));
-
             const newPrice = asset.price * change;
 
-            // Actualizamos el historial (máximo 50 puntos para no saturar memoria)
+            // Calculate percent change relative to the previous price
+            const changePercent = ((newPrice - asset.price) / asset.price) * 100;
+
+            // Update history, keeping the last 50 data points for calculations
             const newHistory = [...asset.history, newPrice].slice(-50);
 
-            // Mutamos el objeto (en una app real clonaríamos, pero aquí optimizamos velocidad)
-            asset.lastPrice = asset.price;
-            asset.price = newPrice;
-            asset.changePercent = ((newPrice - 45000) / 45000) * 100; // Simulación simple %
-            asset.history = newHistory;
+            // Return new object reference (immutability)
+            const updatedAsset: CryptoAsset = {
+                ...asset,
+                price: newPrice,
+                changePercent: changePercent,
+                history: newHistory
+            };
 
-            return { ...asset }; // Retornamos copia superficial para activar detección de cambios
+            // Update local state (side effect for simulation persistence) without mutation
+            Object.assign(asset, updatedAsset);
+
+            return updatedAsset;
         });
     }
 }
