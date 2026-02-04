@@ -189,10 +189,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private handleDataUpdate(prices: CryptoAsset[]) {
-    // 1. Update local signal for UI rendering
+    // 1. Update local signal for UI rendering (Raw data source for computation)
     this.rawPrices.set(prices);
 
-    // 2. Offload heavy calculations to Web Worker
+    // 2. Offload heavy calculations to Web Worker (Always send FULL dataset)
     this.postMessageToWorker(prices);
   }
 
@@ -201,7 +201,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.worker = new Worker(new URL('../../workers/crypto-processor.worker', import.meta.url));
 
       this.worker.onmessage = ({ data }: { data: WorkerResponse[] }) => {
+        // Sincronización: Actualizar signal de estadísticas cuando el Worker responde
         this.marketStats.set(data);
+      };
+
+      this.worker.onerror = (error) => {
+        console.error('Worker System Error:', error);
       };
     } else {
       console.warn('Web Workers are not supported in this environment.');
