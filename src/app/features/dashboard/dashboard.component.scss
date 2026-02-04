@@ -133,6 +133,43 @@ header {
   }
 }
 
+// Contenedor principal del buscador (debajo del header)
+.search-container {
+  display: flex;
+  justify-content: center; // Centrado horizontalmente
+  width: 100%;
+  margin-bottom: 2rem;
+
+  // Estilos para el Buscador (Search Box)
+  .search-box {
+    width: 60%;
+    max-width: 600px;
+
+    input {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      color: white;
+      padding: 12px 16px; // Input más grande
+      border-radius: 8px;
+      font-size: 1.1rem; // Texto más grande
+      width: 100%;
+      transition: all 0.3s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+
+      &:focus {
+        border-color: #00e676;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.2);
+      }
+
+      &::placeholder {
+        color: #666;
+        text-align: center;
+      }
+    }
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -208,6 +245,7 @@ header {
 ::ng-deep .flash-up {
   animation: flashGreen 0.6s ease-out;
   border-radius: 4px;
+
 }
 
 ::ng-deep .flash-down {
