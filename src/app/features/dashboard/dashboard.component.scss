@@ -36,10 +36,13 @@ header {
     align-items: center;
     gap: 1.5rem;
 
+    //Boton de volver
     .back-btn {
+      font-size: 1.2rem;
+      font-weight: 600;
       background: transparent;
       border: 1px solid #444;
-      color: #888;
+      color: #a0a0a0;
       padding: 8px 12px;
       border-radius: 6px;
       cursor: pointer;
@@ -51,16 +54,18 @@ header {
       }
     }
 
+    //Monitor de Criptomonedas
     h1 {
       font-size: 1.8rem;
-      font-weight: 300;
+      font-weight: 500;
       margin: 0;
       display: flex;
       align-items: center;
       gap: 1rem;
 
+      //Indicador de que la data esta en vivo
       .live-indicator {
-        font-size: 0.75rem;
+        font-size: 1.1rem;
         background: $accent-red;
         color: white;
         padding: 4px 8px;
@@ -71,10 +76,11 @@ header {
       }
     }
 
+    //Subtitulo Monitor de Criptomonedas
     p {
       color: $text-secondary;
       margin-top: 0.2rem;
-      font-size: 0.9rem;
+      font-size: 1.3rem;
       margin-bottom: 0;
     }
   }
@@ -92,13 +98,15 @@ header {
     border-radius: 8px;
     padding: 4px;
 
+    //Botones de tabs simulaciones
     button {
       background: transparent;
       border: none;
-      color: #888;
+      color: #a0a0a0;
       padding: 8px 16px;
       cursor: pointer;
-      font-weight: 600;
+      font-size: 1rem;
+      font-weight: 500;
       transition: all 0.2s ease;
       border-radius: 6px;
 
@@ -114,8 +122,9 @@ header {
     }
   }
 
+  //Contador de tiempo (10sg)
   .timer-badge {
-    font-size: 0.85rem;
+    font-size: 1rem;
     color: $accent-green;
     font-family: monospace;
     background: rgba(0, 230, 118, 0.1);

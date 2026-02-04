@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { interval, map, Observable, switchMap, timer, catchError, of } from 'rxjs';
-import { CryptoAsset } from '../models/crypto.model';
+import { CryptoAsset, BinanceTickerDto } from '../models/crypto.model';
 
 @Injectable({
     providedIn: 'root'
@@ -60,7 +60,7 @@ export class CryptoDataService {
         // Codificar URL params correctamente es buena práctica, aunque Binance acepta raw string en algunos casos, mejor encoded.
         const url = `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(symbols)}`;
 
-        return this.http.get<any[]>(url).pipe(
+        return this.http.get<BinanceTickerDto[]>(url).pipe(
             map(response => {
                 // Mapa inverso para relacionar Symbol de Binance -> ID Interno
                 const symbolToIdMap: { [key: string]: string } = {

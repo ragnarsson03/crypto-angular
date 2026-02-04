@@ -17,3 +17,8 @@ export interface WorkerResponse {
     sma: number;
     volatility: number;
 }
+
+export interface BinanceTickerDto {
+    symbol: string;
+    price: string;
+}

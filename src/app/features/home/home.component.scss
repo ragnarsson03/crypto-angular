@@ -1,7 +1,7 @@
 // Variables
 $bg-dark: #0f0f0f;
 $text-light: #ffffff;
-$accent-blue: #2979ff;
+$accent-blue: #5e99ff;
 $accent-green: #00e676;
 $glass-bg: rgba(255, 255, 255, 0.05);
 $glass-border: rgba(255, 255, 255, 0.1);
@@ -53,9 +53,10 @@ $glass-border: rgba(255, 255, 255, 0.1);
         border-radius: 2px;
     }
 
+    //Subtitulo de la bienvenida
     .subtitle {
         color: #888;
-        font-size: 1.1rem;
+        font-size: 1.3rem;
     }
 }
 
@@ -67,10 +68,11 @@ $glass-border: rgba(255, 255, 255, 0.1);
     margin-bottom: 3rem;
     backdrop-filter: blur(10px);
 
+    //Titulo de la lista de estudiantes
     h3 {
         margin-top: 0;
         color: #bbb;
-        font-size: 0.9rem;
+        font-size: 1.1rem;
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 1rem;
@@ -87,7 +89,8 @@ $glass-border: rgba(255, 255, 255, 0.1);
 
         li {
             color: #e0e0e0;
-            font-size: 1rem;
+            font-size: 1.3rem;
+            font-weight: 500;
 
             strong {
                 color: $accent-blue;
@@ -128,14 +131,16 @@ $glass-border: rgba(255, 255, 255, 0.1);
         display: flex;
         flex-direction: column;
 
+        //Etiqueta de la accion
         .label {
-            font-size: 1.1rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: white;
         }
 
+        //Subtitulo de la accion
         .sub {
-            font-size: 0.8rem;
+            font-size: 1.2rem;
             color: rgba(255, 255, 255, 0.7);
         }
     }
@@ -185,8 +190,8 @@ $glass-border: rgba(255, 255, 255, 0.1);
 footer {
     margin-top: 4rem;
     text-align: center;
-    color: #555;
-    font-size: 0.9rem;
+    color: #818181;
+    font-size: 1.2rem;
 }
 
 @keyframes fadeIn {

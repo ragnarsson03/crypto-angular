@@ -1,0 +1,118 @@
+/* 
+ * NOTE: Styles extracted from crypto-card.component.ts
+ * Refactored to improve maintainability.
+ */
+
+:host {
+    display: block;
+}
+
+.card {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    color: #e0e0e0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.alert-border {
+    border-color: #ff4444;
+    box-shadow: 0 0 12px rgba(255, 68, 68, 0.4);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+}
+
+//Titulo de la Criptomoneda
+h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+//Simbolo de la Criptomoneda
+.symbol {
+    color: #b3b3b3;
+    font-size: 1.1rem;
+    font-weight: normal;
+}
+
+.price-block {
+    text-align: right;
+}
+
+//Precio de la Criptomoneda
+.price {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+//Cambio de precio
+.change {
+    font-size: 1rem;
+}
+
+.change.up {
+    color: #00e676;
+}
+
+.change.down {
+    color: #ff1744;
+}
+
+.stats {
+    margin-bottom: 16px;
+}
+
+//Estadisticas de la Criptomoneda
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 1.2rem;
+}
+
+.label {
+    color: #aaa;
+}
+
+.value {
+    font-family: 'Courier New', monospace;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+//Acciones de la Criptomoneda
+.actions label {
+    font-size: 1.1rem;
+    color: #888;
+}
+
+//Input de la Criptomoneda          
+input {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 6px 10px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+}
+
+input:focus {
+    border-color: #4CAF50;
+}
