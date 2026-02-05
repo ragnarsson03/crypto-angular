@@ -70,7 +70,8 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
           @for (asset of filteredPrices(); track trackByAssetId($index, asset)) {
             <app-crypto-card 
               [asset]="asset" 
-              [stats]="getStats(asset.id)">
+              [stats]="getStats(asset.id)"
+              (thresholdUpdate)="onThresholdChange(asset.id, $event)">
             </app-crypto-card>
           }
         } @else {
@@ -101,6 +102,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private priceSub?: Subscription;
   private timerSub?: Subscription;
   private worker: Worker | undefined;
+
+  // Alert State
+  private previousAlertStates = new Map<string, boolean>();
+  private alertAudio = new Audio('assets/sounds/alert.mp3');
 
   // Signals for state management
   readonly rawPrices = signal<CryptoAsset[]>([]);
@@ -133,21 +138,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor() {
     this.initWorker();
 
-    // UX: Dynamic Browser Ticker
-    // Este effect se ejecuta cada vez que 'rawPrices' cambia
+    // UX: Dynamic Title & Sound Alerts
     effect(() => {
       const prices = this.rawPrices();
-      const btc = prices.find(p => p.id === 'bitcoin');
+      const stats = this.marketStats();
 
-      if (btc && btc.price > 0) {
-        // Formato: $95,430.20 | BTC/USDT - CryptoAngular
-        const priceFormatted = btc.price.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-        this.titleService.setTitle(`$${priceFormatted} | BTC/USDT - Monitor`);
+      // 1. Sound Logic
+      let activeAlerts = 0;
+      stats.forEach(s => {
+        if (s.isAlertActive) {
+          activeAlerts++;
+          // Play only on rising edge (false -> true)
+          if (!this.previousAlertStates.get(s.id)) {
+            this.playAlert();
+            this.previousAlertStates.set(s.id, true);
+          }
+        } else {
+          this.previousAlertStates.set(s.id, false);
+        }
+      });
+
+      // 2. Title Logic
+      if (activeAlerts > 0) {
+        this.titleService.setTitle(`🚨 ${activeAlerts} ALERTAS | Monitor`);
       } else {
-        this.titleService.setTitle('Monitor de Criptomonedas');
+        const btc = prices.find(p => p.id === 'bitcoin');
+        if (btc && btc.price > 0) {
+          const priceFormatted = btc.price.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+          this.titleService.setTitle(`$${priceFormatted} | BTC/USDT - Monitor`);
+        } else {
+          this.titleService.setTitle('Monitor de Criptomonedas');
+        }
       }
     });
   }
@@ -277,6 +301,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   updateSearch(event: Event) {
     const input = event.target as HTMLInputElement;
     this.searchTerm.set(input.value);
+  }
+
+  onThresholdChange(id: string, val: number) {
+    this.cryptoService.updateThreshold(id, val);
+  }
+
+  private playAlert() {
+    this.alertAudio.currentTime = 0;
+    this.alertAudio.play().catch(err => console.warn('Audio play failed:', err));
   }
 
   // Optimización de rendimiento para el bucle @for

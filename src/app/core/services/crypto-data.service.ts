@@ -78,6 +78,14 @@ export class CryptoDataService {
         );
     }
 
+    // --- User Actions ---
+    updateThreshold(id: string, value: number) {
+        const asset = this.assetsCache.get(id);
+        if (asset) {
+            this.updateAssetInCache(asset, { threshold: value });
+        }
+    }
+
     // --- Helpers Internos (Delegados) ---
     private seedSimulationData() {
         const basePrices: Record<string, number> = {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, Input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, Input, OnInit, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CryptoAsset, WorkerResponse } from '../../../core/models/crypto.model';
 import { HighlightChangeDirective } from '../../directives/highlight-change.directive';
@@ -8,7 +8,7 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
   standalone: true,
   imports: [CommonModule, HighlightChangeDirective],
   template: `
-    <div class="card" [ngClass]="{'alert-border': isAlertActive()}">
+    <div class="card" [ngClass]="{'alert-pulse': stats?.isAlertActive}">
       <div class="header">
         <h3>{{ asset.id | titlecase }} <span class="symbol">({{ asset.symbol }})</span></h3>
         <div class="price-block">
@@ -70,8 +70,10 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
         <label>Alerta (Umbral):</label>
         <input 
           type="number" 
-          [value]="threshold()" 
-          (input)="updateThreshold($event)" 
+          [value]="localThreshold()" 
+          (input)="onInput($event)"
+          (blur)="commitThreshold()"
+          (keydown.enter)="commitThreshold()"
           placeholder="Min Precio">
       </div>
     </div>
@@ -79,17 +81,12 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
   styleUrls: ['./crypto-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CryptoCardComponent {
+export class CryptoCardComponent implements OnInit {
   @Input({ required: true }) asset!: CryptoAsset;
   @Input() stats: WorkerResponse | undefined;
+  @Output() thresholdUpdate = new EventEmitter<number>();
 
-  readonly threshold = signal<number>(0);
-
-  // Computed signal: Active if threshold is set (>0) AND price drops below it
-  readonly isAlertActive = computed(() => {
-    const t = this.threshold();
-    return t > 0 && this.asset.price < t;
-  });
+  readonly localThreshold = signal<string>('');
 
   // Computed signal: Transform history numbers -> SVG coordinate string "x,y x,y..."
   readonly sparklinePoints = computed(() => {
@@ -108,8 +105,16 @@ export class CryptoCardComponent {
     }).join(' ');
   });
 
-  updateThreshold(event: Event) {
-    const val = parseFloat((event.target as HTMLInputElement).value);
-    this.threshold.set(isNaN(val) ? 0 : val);
+  ngOnInit() {
+    this.localThreshold.set(this.asset.threshold ? this.asset.threshold.toString() : '');
+  }
+
+  onInput(event: Event) {
+    this.localThreshold.set((event.target as HTMLInputElement).value);
+  }
+
+  commitThreshold() {
+    const val = parseFloat(this.localThreshold());
+    this.thresholdUpdate.emit(isNaN(val) ? 0 : val);
   }
 }

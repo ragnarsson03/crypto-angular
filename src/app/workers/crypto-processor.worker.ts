@@ -39,16 +39,21 @@ function processCryptoData(data: WorkerData): WorkerResponse[] {
             .filter(n => !isNaN(n));
 
         if (prices.length === 0) {
-            return { id: asset.id, sma: 0, volatility: 0 };
+            return { id: asset.id, sma: 0, volatility: 0, isAlertActive: false };
         }
 
         const sma = MathUtils.calculateSMA(prices);
         const volatility = MathUtils.calculateVolatility(prices, sma);
 
+        // Alert Logic: Trigger when price >= threshold (Target Price)
+        const threshold = asset.threshold || 0;
+        const isAlertActive = threshold > 0 && asset.price >= threshold;
+
         return {
             id: asset.id,
             sma,
-            volatility
+            volatility,
+            isAlertActive
         };
     });
 }

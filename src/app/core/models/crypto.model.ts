@@ -20,6 +20,7 @@ export interface WorkerResponse {
     id: string;
     sma: number;
     volatility: number;
+    isAlertActive: boolean;
 }
 
 export interface BinanceTickerResponse {

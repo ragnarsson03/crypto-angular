@@ -23,9 +23,25 @@
     }
 }
 
-.alert-border {
-    border-color: #ff4444;
-    box-shadow: 0 0 12px rgba(255, 68, 68, 0.4);
+@keyframes neonPulse {
+    0% {
+        box-shadow: 0 0 5px rgba(255, 68, 68, 0.4);
+        border-color: #ff4444;
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
+        border-color: #ff1744;
+    }
+
+    100% {
+        box-shadow: 0 0 5px rgba(255, 68, 68, 0.4);
+        border-color: #ff4444;
+    }
+}
+
+.alert-pulse {
+    animation: neonPulse 1.5s infinite;
 }
 
 .header {
