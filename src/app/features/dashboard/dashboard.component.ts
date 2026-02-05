@@ -1,11 +1,9 @@
-import { Component, OnInit, OnDestroy, signal, inject, ChangeDetectionStrategy, effect, computed } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Title } from '@angular/platform-browser'; // Importar Title Service
-import { Subscription, interval } from 'rxjs';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { CryptoDataService } from '../../core/services/crypto-data.service';
-import { CryptoAsset, WorkerData, WorkerResponse } from '../../core/models/crypto.model';
+import { RouterModule } from '@angular/router';
 import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-card.component';
+import { DashboardFacade } from './dashboard.facade';
+import { CryptoAsset } from '../../core/models/crypto.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -15,7 +13,7 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
     <div class="dashboard-container">
       <header>
         <div class="title-section">
-          <button class="back-btn" (click)="goBack()">
+          <button class="back-btn" (click)="facade.goBack()">
              ← Volver
           </button>
           <div class="title-text">
@@ -27,56 +25,54 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
         <div class="controls">
           <div class="tabs">
             <button 
-              [class.active]="activeTab() === 'sim'" 
-              (click)="switchTab('sim')">
+              [class.active]="facade.activeTab() === 'sim'" 
+              (click)="facade.switchTab('sim')">
               Simulación (200ms)
             </button>
             <button 
-              [class.active]="activeTab() === 'real'" 
-              (click)="switchTab('real')">
+              [class.active]="facade.activeTab() === 'real'" 
+              (click)="facade.switchTab('real')">
               Mercado Real (API)
             </button>
           </div>
           
-          @if (activeTab() === 'real') {
+          @if (facade.activeTab() === 'real') {
             <div class="timer-badge">
-              Próxima actualización en: {{ nextUpdateIn() }}s
+              Próxima actualización en: {{ facade.nextUpdateIn() }}s
             </div>
           }
         </div>
       </header>
 
-      <!-- Input de Búsqueda (Movido aquí) -->
       <div class="search-container">
         <div class="search-box">
            <input 
              type="text" 
              placeholder="Buscar Criptomoneda"
-             [value]="searchTerm()"
+             [value]="facade.searchTerm()"
              (input)="updateSearch($event)">
         </div>
       </div>
 
       <!-- Status Bar -->
-      @if (statusMessage()) {
-        <div class="status-bar" [class.error]="statusMessage().includes('Error') || statusMessage().includes('Sin datos')">
-           {{ statusMessage() }}
+      @if (facade.statusMessage()) {
+        <div class="status-bar" [class.error]="facade.statusMessage().includes('Error') || facade.statusMessage().includes('Sin datos')">
+           {{ facade.statusMessage() }}
         </div>
       }
 
       <div class="grid">
-        @if (filteredPrices().length > 0) {
-          <!-- Data Loaded -->
-          @for (asset of filteredPrices(); track trackByAssetId($index, asset)) {
+        @if (facade.filteredPrices().length > 0) {
+          @for (asset of facade.filteredPrices(); track trackByAssetId($index, asset)) {
             <app-crypto-card 
               [asset]="asset" 
-              [stats]="getStats(asset.id)"
-              (thresholdUpdate)="onThresholdChange(asset.id, $event)">
+              [stats]="facade.getStats(asset.id)"
+              (thresholdUpdate)="facade.updateThreshold(asset.id, $event)">
             </app-crypto-card>
           }
         } @else {
           <!-- Skeleton Loading State -->
-          @for (item of skeletonItems; track $index) {
+          @for (item of facade.skeletonItems; track $index) {
              <div class="skeleton-card">
                <div class="skeleton-header">
                  <div class="skeleton-title"></div>
@@ -91,228 +87,21 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
     </div>
   `,
   styleUrls: ['./dashboard.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [DashboardFacade]
 })
-export class DashboardComponent implements OnInit, OnDestroy {
-  private cryptoService = inject(CryptoDataService);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private titleService = inject(Title); // Inyección del servicio Title
-
-  private priceSub?: Subscription;
-  private timerSub?: Subscription;
-  private worker: Worker | undefined;
-
-  // Alert State
-  private previousAlertStates = new Map<string, boolean>();
-  private alertAudio = new Audio('assets/sounds/alert.mp3');
-
-  // Signals for state management
-  readonly rawPrices = signal<CryptoAsset[]>([]);
-  readonly marketStats = signal<WorkerResponse[]>([]);
-  readonly statusMessage = signal<string>('');
-
-  // Tab State - Inicializado síncronamente desde la URL para persistencia
-  readonly activeTab = signal<'sim' | 'real'>(
-    (this.route.snapshot.queryParamMap.get('tab') as 'sim' | 'real') || 'sim'
-  );
-  readonly nextUpdateIn = signal<number>(10);
-
-  // Search Filter State 
-  readonly searchTerm = signal<string>('');
-  readonly skeletonItems = Array(5).fill(0);
-
-  // Computed Signal: Filtra rawPrices basado en searchTerm
-  readonly filteredPrices = computed(() => {
-    const term = this.searchTerm().toLowerCase();
-    const prices = this.rawPrices();
-
-    if (!term) return prices;
-
-    return prices.filter(p =>
-      p.id.toLowerCase().includes(term) ||
-      p.symbol.toLowerCase().includes(term)
-    );
-  });
-
-  constructor() {
-    this.initWorker();
-
-    // UX: Dynamic Title & Sound Alerts
-    effect(() => {
-      const prices = this.rawPrices();
-      const stats = this.marketStats();
-
-      // 1. Sound Logic
-      let activeAlerts = 0;
-      stats.forEach(s => {
-        if (s.isAlertActive) {
-          activeAlerts++;
-          // Play only on rising edge (false -> true)
-          if (!this.previousAlertStates.get(s.id)) {
-            this.playAlert();
-            this.previousAlertStates.set(s.id, true);
-          }
-        } else {
-          this.previousAlertStates.set(s.id, false);
-        }
-      });
-
-      // 2. Title Logic
-      if (activeAlerts > 0) {
-        this.titleService.setTitle(`🚨 ${activeAlerts} ALERTAS | Monitor`);
-      } else {
-        const btc = prices.find(p => p.id === 'bitcoin');
-        if (btc && btc.price > 0) {
-          const priceFormatted = btc.price.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          });
-          this.titleService.setTitle(`$${priceFormatted} | BTC/USDT - Monitor`);
-        } else {
-          this.titleService.setTitle('Monitor de Criptomonedas');
-        }
-      }
-    });
-  }
+export class DashboardComponent implements OnInit {
+  facade = inject(DashboardFacade);
 
   ngOnInit() {
-    // Iniciar lógica basada en el tab ya cargado
-    if (this.activeTab() === 'real') {
-      this.statusMessage.set('⏳ Conectando con Binance API...');
-      this.startRealMarket();
-    } else {
-      this.statusMessage.set('🔄 Iniciando motor de simulación...');
-      this.startSimulation();
-    }
+    this.facade.init();
   }
 
-  ngOnDestroy() {
-    this.cleanupSubscriptions();
-    this.worker?.terminate();
-  }
-
-  goBack() {
-    this.router.navigate(['/']);
-  }
-
-  // --- Tab Switching Logic ---
-  switchTab(mode: 'sim' | 'real') {
-    if (this.activeTab() === mode) return;
-
-    this.activeTab.set(mode);
-    this.cleanupSubscriptions();
-    this.rawPrices.set([]); // Limpiar vista momentáneamente
-
-    if (mode === 'sim') {
-      this.statusMessage.set('🔄 Iniciando motor de simulación...');
-      this.startSimulation();
-    } else {
-      this.statusMessage.set('⏳ Sincronizando con Binance API (Proxy/Direct)...');
-      this.startRealMarket();
-    }
-  }
-
-  private cleanupSubscriptions() {
-    this.priceSub?.unsubscribe();
-    this.timerSub?.unsubscribe();
-  }
-
-  // --- Data Providers ---
-
-  private startSimulation() {
-    this.priceSub = this.cryptoService.getSimulatedPrices().subscribe({
-      next: (prices) => {
-        this.statusMessage.set(''); // Ocultar al recibir datos
-        this.handleDataUpdate(prices);
-      },
-      error: (err) => this.statusMessage.set('⚠️ Error en simulación')
-    });
-  }
-
-  private startRealMarket() {
-    // 1. Iniciar subscripción de datos (Hydration + Polling)
-    this.priceSub = this.cryptoService.getRealPrices().subscribe({
-      next: (prices) => {
-        // Si recibimos un array vacío (error controlado), avisamos
-        if (prices.length === 0) {
-          this.statusMessage.set('⚠️ Sin datos: Verificando conexión...');
-        } else {
-          this.statusMessage.set(''); // Todo OK
-          this.handleDataUpdate(prices);
-        }
-        this.resetTimer();
-      },
-      error: (err) => this.statusMessage.set('⚠️ Error Crítico de API')
-    });
-
-    // 2. Iniciar Timer visual
-    this.resetTimer();
-    this.timerSub = interval(1000).subscribe(() => {
-      this.nextUpdateIn.update(v => v > 0 ? v - 1 : 5);
-    });
-  }
-
-  private resetTimer() {
-    this.nextUpdateIn.set(5);
-  }
-
-  private handleDataUpdate(prices: CryptoAsset[]) {
-    // 1. Update local signal for UI rendering (Raw data source for computation)
-    this.rawPrices.set(prices);
-
-    // 2. Offload heavy calculations to Web Worker (Always send FULL dataset)
-    this.postMessageToWorker(prices);
-  }
-
-  private initWorker() {
-    if (typeof Worker !== 'undefined') {
-      this.worker = new Worker(new URL('../../workers/crypto-processor.worker', import.meta.url));
-
-      this.worker.onmessage = ({ data }: { data: WorkerResponse[] }) => {
-        // Sincronización: Actualizar signal de estadísticas cuando el Worker responde
-        this.marketStats.set(data);
-      };
-
-      this.worker.onerror = (error) => {
-        console.error('Worker System Error:', error);
-      };
-    } else {
-      console.warn('Web Workers are not supported in this environment.');
-    }
-  }
-
-  private postMessageToWorker(assets: CryptoAsset[]) {
-    if (this.worker) {
-      const message: WorkerData = {
-        action: 'CALCULATE_STATS',
-        payload: assets
-      };
-      this.worker.postMessage(message);
-    }
-  }
-
-  // Estadísticas de un asset específico usando signal
-  getStats(assetId: string): WorkerResponse | undefined {
-    return this.marketStats().find(s => s.id === assetId);
-  }
-
-  // Input de Búsqueda
   updateSearch(event: Event) {
     const input = event.target as HTMLInputElement;
-    this.searchTerm.set(input.value);
+    this.facade.updateSearch(input.value);
   }
 
-  onThresholdChange(id: string, val: number) {
-    this.cryptoService.updateThreshold(id, val);
-  }
-
-  private playAlert() {
-    this.alertAudio.currentTime = 0;
-    this.alertAudio.play().catch(err => console.warn('Audio play failed:', err));
-  }
-
-  // Optimización de rendimiento para el bucle @for
   trackByAssetId(index: number, item: CryptoAsset): string {
     return item.id;
   }
