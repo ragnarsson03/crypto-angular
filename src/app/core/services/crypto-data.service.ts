@@ -11,6 +11,7 @@ export class CryptoDataService {
     private http = inject(HttpClient);
 
     private assetsCache: Map<string, CryptoAsset> = new Map();
+    private readonly API_BASE = 'https://api.binance.com/api/v3';
 
     // Configuración Base (Metadata pura)
     private readonly BASE_CONFIG = [
@@ -114,7 +115,7 @@ export class CryptoDataService {
         const symbols = JSON.stringify(this.BASE_CONFIG.map(t => `${t.symbol}USDT`));
         const params = `?symbols=${encodeURIComponent(symbols)}`;
 
-        return this.fetchWithFallback<any[]>('/ticker/24hr', params).pipe(
+        return this.fetchFromApi<any[]>('/ticker/24hr', params).pipe(
             map(response => {
                 const responseMap = new Map(response.map(item => [item.symbol, item]));
 
@@ -140,7 +141,7 @@ export class CryptoDataService {
             const symbol = `${token.symbol}USDT`;
             const params = `?symbol=${symbol}&interval=1h&limit=50`;
 
-            return this.fetchWithFallback<any[][]>('/klines', params).pipe(
+            return this.fetchFromApi<any[][]>('/klines', params).pipe(
                 map(klines => {
                     const history = klines.map(k => parseFloat(k[4]));
                     const current = this.assetsCache.get(token.id)!;
@@ -155,17 +156,9 @@ export class CryptoDataService {
     }
 
     // --- Helpers ---
-    private fetchWithFallback<T>(endpoint: string, params: string): Observable<T> {
-        const proxyUrl = `/api/v3${endpoint}${params}`;
-        const directUrl = `https://api.binance.com/api/v3${endpoint}${params}`;
-
-        return this.http.get<T>(proxyUrl).pipe(
-            catchError(error => {
-                if (error.status === 404) console.warn(`ℹ️ Proxy 404: Switching to Direct API (${directUrl})`);
-                else console.warn(`⚠️ Proxy Error ${error.status}: Switching fallback.`);
-                return this.http.get<T>(directUrl);
-            })
-        );
+    private fetchFromApi<T>(endpoint: string, params: string): Observable<T> {
+        const url = `${this.API_BASE}${endpoint}${params}`;
+        return this.http.get<T>(url);
     }
 
     private normalizeApiData(data: any): Partial<CryptoAsset> {
