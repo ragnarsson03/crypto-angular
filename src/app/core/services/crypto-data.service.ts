@@ -1,6 +1,7 @@
+
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { interval, map, Observable, switchMap, timer, catchError, of } from 'rxjs';
+import { interval, map, Observable, switchMap, timer, catchError, of, forkJoin, merge } from 'rxjs';
 import { CryptoAsset } from '../models/crypto.model';
 
 @Injectable({
@@ -56,20 +57,66 @@ export class CryptoDataService {
         });
     }
 
-    // --- MODO: Mercado Real (API Optimizada) ---
+    // --- MODO: Mercado Real (Hydrated + Live Ticker) ---
     getRealPrices(): Observable<CryptoAsset[]> {
-        // Polling cada 5s para evitar baneos
-        return timer(0, 5000).pipe(
-            switchMap(() => this.fetchFromBinance())
+        // Merge: Combina la hidratación inicial (History) + Ticker en vivo (Polling)
+        // Esto asegura que la gráfica se pinte rápido mientras llegan los precios en tiempo real
+        return merge(
+            this.fetchInitialHistory(),
+            timer(0, 5000).pipe(switchMap(() => this.fetchFromBinance()))
         );
     }
 
-    private fetchFromBinance(): Observable<CryptoAsset[]> {
-        const symbols = '["BTCUSDT","ETHUSDT","SOLUSDT","ADAUSDT","DOTUSDT"]';
-        // Endpoint OPTIMIZADO: ticker/24hr trae todo (Price, Change, Vol, High, Low)
-        const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(symbols)}`;
+    // --- Helper: Fetch with Proxy Fallback ---
+    private fetchWithFallback<T>(endpoint: string, params: string = ''): Observable<T> {
+        const proxyUrl = `/api/v3${endpoint}${params}`;
+        const directUrl = `https://api.binance.com/api/v3${endpoint}${params}`;
 
-        return this.http.get<any[]>(url).pipe(
+        return this.http.get<T>(proxyUrl).pipe(
+            catchError(error => {
+                // Manejo especial para 404 (Proxy no configurado o inactivo) para no ensuciar la consola
+                if (error.status === 404) {
+                    console.warn(`ℹ️ Modo Dev: Proxy local no detectado. Usando conexión directa a Binance.`);
+                } else {
+                    console.warn(`⚠️ Proxy Error [${proxyUrl}]: ${error.status} ${error.statusText}`);
+                }
+
+                // Fallback inmediato
+                return this.http.get<T>(directUrl);
+            })
+        );
+    }
+
+    // Fetch inicial de K-Lines para poblar las gráficas (Sparklines)
+    private fetchInitialHistory(): Observable<CryptoAsset[]> {
+        const requests = Array.from(this.assetsCache.values()).map(asset => {
+            const binanceSymbol = `${asset.symbol}USDT`;
+            const params = `?symbol=${binanceSymbol}&interval=1h&limit=50`;
+
+            return this.fetchWithFallback<any[][]>('/klines', params).pipe(
+                map(klines => {
+                    const history = klines.map(k => parseFloat(k[4]));
+                    const current = this.assetsCache.get(asset.id)!;
+                    const updated = { ...current, history };
+                    this.assetsCache.set(asset.id, updated);
+                    return updated;
+                }),
+                catchError(err => {
+                    console.error(`❌ History Fetch Failed [${asset.symbol}]:`, err.message);
+                    return of(asset);
+                })
+            );
+        });
+
+        return forkJoin(requests);
+    }
+
+    private fetchFromBinance(): Observable<CryptoAsset[]> {
+        // Formato simple pero robusto
+        const symbols = '["BTCUSDT","ETHUSDT","SOLUSDT","ADAUSDT","DOTUSDT"]';
+        const params = `?symbols=${encodeURIComponent(symbols)}`;
+
+        return this.fetchWithFallback<any[]>('/ticker/24hr', params).pipe(
             map(response => {
                 const symbolToIdMap: { [key: string]: string } = {
                     'BTCUSDT': 'bitcoin',
@@ -89,8 +136,8 @@ export class CryptoDataService {
                 });
             }),
             catchError(err => {
-                console.error('Binance API Error:', err);
-                return of(Array.from(this.assetsCache.values()));
+                console.error('❌ Critical API Error (Ticker):', err.message);
+                return of([]);
             })
         );
     }
