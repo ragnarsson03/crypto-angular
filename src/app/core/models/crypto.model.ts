@@ -3,6 +3,9 @@ export interface CryptoAsset {
     symbol: string;
     price: number;
     changePercent: number;
+    volume: number;
+    high24h: number;
+    low24h: number;
     history: number[];
 }
 
@@ -16,4 +19,9 @@ export interface WorkerResponse {
     id: string;
     sma: number;
     volatility: number;
+}
+
+export interface BinanceTickerDto {
+    symbol: string;
+    price: string;
 }

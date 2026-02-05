@@ -20,11 +20,13 @@ import { Router, RouterModule } from '@angular/router';
         <div class="students-list">
           <h3>Equipo de Desarrollo:</h3>
           <ul>
-            <li><strong>Frederick Durán:</strong> V-30.346.056</li>
-            <li><strong>Jonathan Alvarado:</strong> V-22.749.638</li>
-            <li><strong>Juan Echenique:</strong> V-30.829.758</li>
-            <li><strong>Miguel Eduardo:</strong> V-6.914.378</li>
-            <li><strong>Yesmir Guzmán:</strong> V-20.130.682 </li>
+            <li><strong>Frederick Durán:</strong> <br> V-30.346.056</li>
+             <li><strong>Juan Echenique:</strong> <br> V-30.829.758</li>
+             <li><strong>Juan Henríquez:</strong> <br> V-27.913.162</li>
+            <li><strong>Jonathan Alvarado:</strong> <br> V-22.749.638</li>
+           <li><strong>Yesmir Guzmán:</strong> <br> V-20.130.682</li>
+            <li><strong>Miguel Eduardo:</strong> <br> V-6.914.378</li>
+            
           </ul>
         </div>
 
