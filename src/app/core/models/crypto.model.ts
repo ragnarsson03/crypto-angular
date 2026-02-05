@@ -3,6 +3,9 @@ export interface CryptoAsset {
     symbol: string;
     price: number;
     changePercent: number;
+    volume: number;
+    high24h: number;
+    low24h: number;
     history: number[];
 }
 

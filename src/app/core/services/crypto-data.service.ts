@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { interval, map, Observable, switchMap, timer, catchError, of } from 'rxjs';
-import { CryptoAsset, BinanceTickerDto } from '../models/crypto.model';
+import { CryptoAsset } from '../models/crypto.model';
 
 @Injectable({
     providedIn: 'root'
@@ -13,11 +13,11 @@ export class CryptoDataService {
     private assetsCache: Map<string, CryptoAsset> = new Map();
 
     private readonly initialAssets: CryptoAsset[] = [
-        { id: 'bitcoin', symbol: 'BTC', price: 95000, changePercent: 0, history: [] }, // Base 2026
-        { id: 'ethereum', symbol: 'ETH', price: 6500, changePercent: 0, history: [] },
-        { id: 'solana', symbol: 'SOL', price: 350, changePercent: 0, history: [] },
-        { id: 'cardano', symbol: 'ADA', price: 1.20, changePercent: 0, history: [] },
-        { id: 'polkadot', symbol: 'DOT', price: 15.0, changePercent: 0, history: [] }
+        { id: 'bitcoin', symbol: 'BTC', price: 95000, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
+        { id: 'ethereum', symbol: 'ETH', price: 6500, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
+        { id: 'solana', symbol: 'SOL', price: 350, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
+        { id: 'cardano', symbol: 'ADA', price: 1.20, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
+        { id: 'polkadot', symbol: 'DOT', price: 15.0, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] }
     ];
 
     constructor() {
@@ -30,7 +30,8 @@ export class CryptoDataService {
 
     // --- MODO: Simulación Alta Frecuencia (200ms) ---
     getSimulatedPrices(): Observable<CryptoAsset[]> {
-        return interval(200).pipe(
+        // Usamos timer(0, 200) para emitir inmediatamente
+        return timer(0, 200).pipe(
             map(() => this.generateSimulatedData())
         );
     }
@@ -42,27 +43,34 @@ export class CryptoDataService {
             const change = 1 + (Math.random() * volatility - (volatility / 2));
             const newPrice = asset.price * change;
 
-            return this.updateAssetInCache(asset, newPrice);
+            // Simular otros datos
+            const simulatedData = {
+                price: newPrice,
+                changePercent: asset.changePercent + (Math.random() * 0.1 - 0.05),
+                volume: Math.random() * 1000000,
+                high24h: newPrice * 1.05,
+                low24h: newPrice * 0.95
+            };
+
+            return this.updateAssetInCache(asset, simulatedData);
         });
     }
 
-    // --- MODO: Mercado Real (API) ---
+    // --- MODO: Mercado Real (API Optimizada) ---
     getRealPrices(): Observable<CryptoAsset[]> {
-        // Timer para polling cada 10s
-        return timer(0, 10000).pipe(
+        // Polling cada 5s para evitar baneos
+        return timer(0, 5000).pipe(
             switchMap(() => this.fetchFromBinance())
         );
     }
 
     private fetchFromBinance(): Observable<CryptoAsset[]> {
-        // Símbolos de Binance para nuestros assets
         const symbols = '["BTCUSDT","ETHUSDT","SOLUSDT","ADAUSDT","DOTUSDT"]';
-        // Codificar URL params correctamente es buena práctica, aunque Binance acepta raw string en algunos casos, mejor encoded.
-        const url = `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(symbols)}`;
+        // Endpoint OPTIMIZADO: ticker/24hr trae todo (Price, Change, Vol, High, Low)
+        const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(symbols)}`;
 
-        return this.http.get<BinanceTickerDto[]>(url).pipe(
+        return this.http.get<any[]>(url).pipe(
             map(response => {
-                // Mapa inverso para relacionar Symbol de Binance -> ID Interno
                 const symbolToIdMap: { [key: string]: string } = {
                     'BTCUSDT': 'bitcoin',
                     'ETHUSDT': 'ethereum',
@@ -72,47 +80,54 @@ export class CryptoDataService {
                 };
 
                 return Array.from(this.assetsCache.values()).map(cachedAsset => {
-                    // Buscar el objeto correspondiente en la respuesta de Binance
-                    // Binance retorna array: [{symbol: "BTCUSDT", price: "78684.12"}, ...]
-                    // Necesitamos encontrar el que coincida con el symbol mapeado
+                    const binanceData = response.find(item => symbolToIdMap[item.symbol] === cachedAsset.id);
 
-                    // Nota: Podríamos optimizar creando un Map de la respuesta primero, pero para 5 items filter/find está bien.
-                    const binanceTicket = response.find(item => symbolToIdMap[item.symbol] === cachedAsset.id);
-
-                    if (binanceTicket) {
-                        const newPrice = parseFloat(binanceTicket.price);
-                        return this.updateAssetInCache(cachedAsset, newPrice);
+                    if (binanceData) {
+                        return this.updateAssetInCache(cachedAsset, this.normalizeData(binanceData));
                     }
-
-                    return cachedAsset; // Fallback: mantener último precio conocido
+                    return cachedAsset;
                 });
             }),
-            // Resiliencia: Si falla la petición HTTP, devolvemos lo que hay en caché en lugar de romper el stream
             catchError(err => {
-                console.error('Binance API Error (CORS/Network):', err);
+                console.error('Binance API Error:', err);
                 return of(Array.from(this.assetsCache.values()));
             })
         );
     }
 
-    // --- Lógica Común de Actualización ---
-    private updateAssetInCache(asset: CryptoAsset, newPrice: number): CryptoAsset {
-        // Calcular % cambio vs el tick anterior
-        const changePercent = asset.price !== 0 ? ((newPrice - asset.price) / asset.price) * 100 : 0;
+    // Normalización estricta de datos externos
+    private normalizeData(apiData: any): Partial<CryptoAsset> {
+        return {
+            price: Number(apiData.lastPrice),
+            changePercent: Number(apiData.priceChangePercent),
+            volume: Number(apiData.volume),
+            high24h: Number(apiData.highPrice),
+            low24h: Number(apiData.lowPrice)
+        };
+    }
 
-        // Actualizar historial (fifo 50 items)
+    // --- Lógica Común de Actualización ---
+    private updateAssetInCache(asset: CryptoAsset, newData: Partial<CryptoAsset>): CryptoAsset {
+        const newPrice = newData.price || asset.price;
+        // En simulación calculamos el changePercent, en real viene de la API
+        // Si newData trae changePercent lo usamos, sino lo calculamos (caso fallback)
+        const changePercent = newData.changePercent !== undefined
+            ? newData.changePercent
+            : (asset.price !== 0 ? ((newPrice - asset.price) / asset.price) * 100 : 0);
+
         const newHistory = [...asset.history, newPrice].slice(-50);
 
         const updatedAsset: CryptoAsset = {
             ...asset,
             price: newPrice,
             changePercent: changePercent,
+            volume: newData.volume || 0,
+            high24h: newData.high24h || 0,
+            low24h: newData.low24h || 0,
             history: newHistory
         };
 
-        // Guardar en caché para la próxima iteración
         this.assetsCache.set(asset.id, updatedAsset);
-
         return updatedAsset;
     }
 }
