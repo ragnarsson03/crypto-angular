@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, inject, ChangeDetectionStrategy, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Title } from '@angular/platform-browser'; // Importar Title Service
 import { Subscription, interval } from 'rxjs';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CryptoDataService } from '../../core/services/crypto-data.service';
@@ -36,10 +37,7 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
               Mercado Real (API)
             </button>
           </div>
-            <!-- El método va en la clase, no en el template -->
           
-
-
           @if (activeTab() === 'real') {
             <div class="timer-badge">
               Próxima actualización en: {{ nextUpdateIn() }}s
@@ -98,6 +96,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private cryptoService = inject(CryptoDataService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private titleService = inject(Title); // Inyección del servicio Title
 
   private priceSub?: Subscription;
   private timerSub?: Subscription;
@@ -106,21 +105,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Signals for state management
   readonly rawPrices = signal<CryptoAsset[]>([]);
   readonly marketStats = signal<WorkerResponse[]>([]);
-  readonly statusMessage = signal<string>(''); // Nuevo Signal para la Barra de Estado
+  readonly statusMessage = signal<string>('');
 
-  // Tab State
   // Tab State - Inicializado síncronamente desde la URL para persistencia
   readonly activeTab = signal<'sim' | 'real'>(
     (this.route.snapshot.queryParamMap.get('tab') as 'sim' | 'real') || 'sim'
   );
   readonly nextUpdateIn = signal<number>(10);
 
-  // Search Filter State (Comentado como pediste)
-  readonly searchTerm = signal<string>(''); // Almacena el texto del buscador
-  readonly skeletonItems = Array(5).fill(0); // 5 Skeleton cards
+  // Search Filter State 
+  readonly searchTerm = signal<string>('');
+  readonly skeletonItems = Array(5).fill(0);
 
   // Computed Signal: Filtra rawPrices basado en searchTerm
-  // Se actualiza automáticamente cuando cambia rawPrices O searchTerm
   readonly filteredPrices = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const prices = this.rawPrices();
@@ -135,6 +132,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.initWorker();
+
+    // UX: Dynamic Browser Ticker
+    // Este effect se ejecuta cada vez que 'rawPrices' cambia
+    effect(() => {
+      const prices = this.rawPrices();
+      const btc = prices.find(p => p.id === 'bitcoin');
+
+      if (btc && btc.price > 0) {
+        // Formato: $95,430.20 | BTC/USDT - CryptoAngular
+        const priceFormatted = btc.price.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        this.titleService.setTitle(`$${priceFormatted} | BTC/USDT - Monitor`);
+      } else {
+        this.titleService.setTitle('Monitor de Criptomonedas');
+      }
+    });
   }
 
   ngOnInit() {

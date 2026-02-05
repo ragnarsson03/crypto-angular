@@ -10,15 +10,15 @@ import { CryptoAsset } from '../models/crypto.model';
 export class CryptoDataService {
     private http = inject(HttpClient);
 
-    // Cache local para mantener el historial de precios (necesario para el Worker)
     private assetsCache: Map<string, CryptoAsset> = new Map();
 
-    private readonly initialAssets: CryptoAsset[] = [
-        { id: 'bitcoin', symbol: 'BTC', price: 95000, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
-        { id: 'ethereum', symbol: 'ETH', price: 6500, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
-        { id: 'solana', symbol: 'SOL', price: 350, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
-        { id: 'cardano', symbol: 'ADA', price: 1.20, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] },
-        { id: 'polkadot', symbol: 'DOT', price: 15.0, changePercent: 0, volume: 0, high24h: 0, low24h: 0, history: [] }
+    // Configuración Base (Metadata pura)
+    private readonly BASE_CONFIG = [
+        { id: 'bitcoin', symbol: 'BTC' },
+        { id: 'ethereum', symbol: 'ETH' },
+        { id: 'solana', symbol: 'SOL' },
+        { id: 'cardano', symbol: 'ADA' },
+        { id: 'polkadot', symbol: 'DOT' }
     ];
 
     constructor() {
@@ -26,155 +26,170 @@ export class CryptoDataService {
     }
 
     private initializeCache() {
-        this.initialAssets.forEach(a => this.assetsCache.set(a.id, { ...a }));
-    }
-
-    // --- MODO: Simulación Alta Frecuencia (200ms) ---
-    getSimulatedPrices(): Observable<CryptoAsset[]> {
-        // Usamos timer(0, 200) para emitir inmediatamente
-        return timer(0, 200).pipe(
-            map(() => this.generateSimulatedData())
-        );
-    }
-
-    private generateSimulatedData(): CryptoAsset[] {
-        return Array.from(this.assetsCache.values()).map(asset => {
-            // Simular fluctuación aleatoria (+/- 2%)
-            const volatility = 0.02;
-            const change = 1 + (Math.random() * volatility - (volatility / 2));
-            const newPrice = asset.price * change;
-
-            // Simular otros datos
-            const simulatedData = {
-                price: newPrice,
-                changePercent: asset.changePercent + (Math.random() * 0.1 - 0.05),
-                volume: Math.random() * 1000000,
-                high24h: newPrice * 1.05,
-                low24h: newPrice * 0.95
-            };
-
-            return this.updateAssetInCache(asset, simulatedData);
+        // Inicialización en CERO (Skeleton State)
+        this.BASE_CONFIG.forEach(token => {
+            this.assetsCache.set(token.id, {
+                ...token,
+                price: 0,
+                changePercent: 0,
+                volume: 0,
+                high24h: 0,
+                low24h: 0,
+                history: []
+            });
         });
     }
 
-    // --- MODO: Mercado Real (Hydrated + Live Ticker) ---
-    getRealPrices(): Observable<CryptoAsset[]> {
-        // Merge: Combina la hidratación inicial (History) + Ticker en vivo (Polling)
-        // Esto asegura que la gráfica se pinte rápido mientras llegan los precios en tiempo real
-        return merge(
-            this.fetchInitialHistory(),
-            timer(0, 5000).pipe(switchMap(() => this.fetchFromBinance()))
-        );
-    }
+    // --- MODO: Simulación (Hydrated from Real Market) ---
+    getSimulatedPrices(): Observable<CryptoAsset[]> {
+        // 1. Verificar si necesitamos hidratación inicial con precios reales
+        const needsHydration = this.assetsCache.get('bitcoin')?.price === 0;
 
-    // --- Helper: Fetch with Proxy Fallback ---
-    private fetchWithFallback<T>(endpoint: string, params: string = ''): Observable<T> {
-        const proxyUrl = `/api/v3${endpoint}${params}`;
-        const directUrl = `https://api.binance.com/api/v3${endpoint}${params}`;
-
-        return this.http.get<T>(proxyUrl).pipe(
-            catchError(error => {
-                // Manejo especial para 404 (Proxy no configurado o inactivo) para no ensuciar la consola
-                if (error.status === 404) {
-                    console.warn(`ℹ️ Modo Dev: Proxy local no detectado. Usando conexión directa a Binance.`);
-                } else {
-                    console.warn(`⚠️ Proxy Error [${proxyUrl}]: ${error.status} ${error.statusText}`);
-                }
-
-                // Fallback inmediato
-                return this.http.get<T>(directUrl);
-            })
-        );
-    }
-
-    // Fetch inicial de K-Lines para poblar las gráficas (Sparklines)
-    private fetchInitialHistory(): Observable<CryptoAsset[]> {
-        const requests = Array.from(this.assetsCache.values()).map(asset => {
-            const binanceSymbol = `${asset.symbol}USDT`;
-            const params = `?symbol=${binanceSymbol}&interval=1h&limit=50`;
-
-            return this.fetchWithFallback<any[][]>('/klines', params).pipe(
-                map(klines => {
-                    const history = klines.map(k => parseFloat(k[4]));
-                    const current = this.assetsCache.get(asset.id)!;
-                    const updated = { ...current, history };
-                    this.assetsCache.set(asset.id, updated);
-                    return updated;
-                }),
+        if (needsHydration) {
+            // 2. Primero obtenemos los precios REALES de Binance
+            return this.fetchRealTimeTicker().pipe(
                 catchError(err => {
-                    console.error(`❌ History Fetch Failed [${asset.symbol}]:`, err.message);
-                    return of(asset);
+                    // Si falla la API, usamos fallback de semillas mock
+                    console.warn('⚠️ API hydration failed. Using fallback seeds for simulation.');
+                    this.seedSimulationData();
+                    return of(Array.from(this.assetsCache.values()));
+                }),
+                switchMap(() => {
+                    // 3. Una vez hidratado, iniciamos el motor de simulación
+                    return timer(0, 200).pipe(
+                        map(() => this.updateSimulationStep())
+                    );
                 })
             );
-        });
-
-        return forkJoin(requests);
+        } else {
+            // Ya tenemos precios (cambio de pestaña), continuamos simulación
+            return timer(0, 200).pipe(
+                map(() => this.updateSimulationStep())
+            );
+        }
     }
 
-    private fetchFromBinance(): Observable<CryptoAsset[]> {
-        // Formato simple pero robusto
-        const symbols = '["BTCUSDT","ETHUSDT","SOLUSDT","ADAUSDT","DOTUSDT"]';
+    // --- MODO: Mercado Real ---
+    getRealPrices(): Observable<CryptoAsset[]> {
+        return merge(
+            this.fetchInitialHistory(),
+            timer(0, 5000).pipe(switchMap(() => this.fetchRealTimeTicker()))
+        );
+    }
+
+    // --- Lógica de Simulación ---
+    private seedSimulationData() {
+        const basePrices: Record<string, number> = {
+            'bitcoin': 65000, 'ethereum': 3200, 'solana': 140, 'cardano': 0.45, 'polkadot': 7.5
+        };
+
+        this.BASE_CONFIG.forEach(token => {
+            const current = this.assetsCache.get(token.id)!;
+            this.assetsCache.set(token.id, {
+                ...current,
+                price: basePrices[token.id] || 100,
+                volume: 500000 + Math.random() * 500000
+            });
+        });
+    }
+
+    private updateSimulationStep(): CryptoAsset[] {
+        return Array.from(this.assetsCache.values()).map(asset => {
+            const volatility = 0.015;
+            const changeFactor = 1 + (Math.random() * volatility - (volatility / 2));
+            const newPrice = asset.price * changeFactor;
+
+            const changes: Partial<CryptoAsset> = {
+                price: newPrice,
+                volume: asset.volume + (Math.random() * 1000),
+                changePercent: asset.changePercent + (Math.random() * 0.1 - 0.05)
+            };
+
+            return this.updateAssetInCache(asset, changes);
+        });
+    }
+
+    // --- Lógica API ---
+    private fetchRealTimeTicker(): Observable<CryptoAsset[]> {
+        const symbols = JSON.stringify(this.BASE_CONFIG.map(t => `${t.symbol}USDT`));
         const params = `?symbols=${encodeURIComponent(symbols)}`;
 
         return this.fetchWithFallback<any[]>('/ticker/24hr', params).pipe(
             map(response => {
-                const symbolToIdMap: { [key: string]: string } = {
-                    'BTCUSDT': 'bitcoin',
-                    'ETHUSDT': 'ethereum',
-                    'SOLUSDT': 'solana',
-                    'ADAUSDT': 'cardano',
-                    'DOTUSDT': 'polkadot'
-                };
+                const responseMap = new Map(response.map(item => [item.symbol, item]));
 
-                return Array.from(this.assetsCache.values()).map(cachedAsset => {
-                    const binanceData = response.find(item => symbolToIdMap[item.symbol] === cachedAsset.id);
+                return this.BASE_CONFIG.map(token => {
+                    const apiData = responseMap.get(`${token.symbol}USDT`);
+                    const current = this.assetsCache.get(token.id)!;
 
-                    if (binanceData) {
-                        return this.updateAssetInCache(cachedAsset, this.normalizeData(binanceData));
+                    if (apiData) {
+                        return this.updateAssetInCache(current, this.normalizeApiData(apiData));
                     }
-                    return cachedAsset;
+                    return current;
                 });
             }),
             catchError(err => {
-                console.error('❌ Critical API Error (Ticker):', err.message);
+                console.error('❌ Ticker API failed:', err.message);
                 return of([]);
             })
         );
     }
 
-    // Normalización estricta de datos externos
-    private normalizeData(apiData: any): Partial<CryptoAsset> {
+    private fetchInitialHistory(): Observable<CryptoAsset[]> {
+        const requests = this.BASE_CONFIG.map(token => {
+            const symbol = `${token.symbol}USDT`;
+            const params = `?symbol=${symbol}&interval=1h&limit=50`;
+
+            return this.fetchWithFallback<any[][]>('/klines', params).pipe(
+                map(klines => {
+                    const history = klines.map(k => parseFloat(k[4]));
+                    const current = this.assetsCache.get(token.id)!;
+                    const updated = { ...current, history };
+                    this.assetsCache.set(token.id, updated);
+                    return updated;
+                }),
+                catchError(err => of(this.assetsCache.get(token.id)!))
+            );
+        });
+        return forkJoin(requests);
+    }
+
+    // --- Helpers ---
+    private fetchWithFallback<T>(endpoint: string, params: string): Observable<T> {
+        const proxyUrl = `/api/v3${endpoint}${params}`;
+        const directUrl = `https://api.binance.com/api/v3${endpoint}${params}`;
+
+        return this.http.get<T>(proxyUrl).pipe(
+            catchError(error => {
+                if (error.status === 404) console.warn(`ℹ️ Proxy 404: Switching to Direct API (${directUrl})`);
+                else console.warn(`⚠️ Proxy Error ${error.status}: Switching fallback.`);
+                return this.http.get<T>(directUrl);
+            })
+        );
+    }
+
+    private normalizeApiData(data: any): Partial<CryptoAsset> {
         return {
-            price: Number(apiData.lastPrice),
-            changePercent: Number(apiData.priceChangePercent),
-            volume: Number(apiData.volume),
-            high24h: Number(apiData.highPrice),
-            low24h: Number(apiData.lowPrice)
+            price: parseFloat(data.lastPrice),
+            changePercent: parseFloat(data.priceChangePercent),
+            volume: parseFloat(data.volume),
+            high24h: parseFloat(data.highPrice),
+            low24h: parseFloat(data.lowPrice)
         };
     }
 
-    // --- Lógica Común de Actualización ---
-    private updateAssetInCache(asset: CryptoAsset, newData: Partial<CryptoAsset>): CryptoAsset {
-        const newPrice = newData.price || asset.price;
-        // En simulación calculamos el changePercent, en real viene de la API
-        // Si newData trae changePercent lo usamos, sino lo calculamos (caso fallback)
-        const changePercent = newData.changePercent !== undefined
-            ? newData.changePercent
-            : (asset.price !== 0 ? ((newPrice - asset.price) / asset.price) * 100 : 0);
+    private updateAssetInCache(asset: CryptoAsset, changes: Partial<CryptoAsset>): CryptoAsset {
+        const newPrice = changes.price || asset.price;
+        const history = asset.history ? [...asset.history] : [];
 
-        const newHistory = [...asset.history, newPrice].slice(-50);
+        // Solo agregamos al historial si el precio cambió o es simulación
+        if (newPrice !== asset.price || history.length === 0) {
+            history.push(newPrice);
+            if (history.length > 50) history.shift();
+        }
 
-        const updatedAsset: CryptoAsset = {
-            ...asset,
-            price: newPrice,
-            changePercent: changePercent,
-            volume: newData.volume || 0,
-            high24h: newData.high24h || 0,
-            low24h: newData.low24h || 0,
-            history: newHistory
-        };
-
-        this.assetsCache.set(asset.id, updatedAsset);
-        return updatedAsset;
+        const updated = { ...asset, ...changes, history };
+        this.assetsCache.set(asset.id, updated);
+        return updated;
     }
 }
