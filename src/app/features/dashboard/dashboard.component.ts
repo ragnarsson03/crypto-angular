@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, inject, ChangeDetectionStrategy, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Title } from '@angular/platform-browser'; // Importar Title Service
 import { Subscription, interval } from 'rxjs';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CryptoDataService } from '../../core/services/crypto-data.service';
@@ -36,10 +37,7 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
               Mercado Real (API)
             </button>
           </div>
-            <!-- El método va en la clase, no en el template -->
           
-
-
           @if (activeTab() === 'real') {
             <div class="timer-badge">
               Próxima actualización en: {{ nextUpdateIn() }}s
@@ -59,17 +57,34 @@ import { CryptoCardComponent } from '../../shared/components/crypto-card/crypto-
         </div>
       </div>
 
+      <!-- Status Bar -->
+      @if (statusMessage()) {
+        <div class="status-bar" [class.error]="statusMessage().includes('Error') || statusMessage().includes('Sin datos')">
+           {{ statusMessage() }}
+        </div>
+      }
+
       <div class="grid">
-        <!-- Iterate over FILTERED prices instead of raw -->
-        @for (asset of filteredPrices(); track trackByAssetId($index, asset)) {
-          <app-crypto-card 
-            [asset]="asset" 
-            [stats]="getStats(asset.id)">
-          </app-crypto-card>
-        } @empty {
-          <div class="loading">
-            {{ activeTab() === 'real' ? 'Conectando con Binance API...' : 'Iniciando simulación...' }}
-          </div>
+        @if (filteredPrices().length > 0) {
+          <!-- Data Loaded -->
+          @for (asset of filteredPrices(); track trackByAssetId($index, asset)) {
+            <app-crypto-card 
+              [asset]="asset" 
+              [stats]="getStats(asset.id)">
+            </app-crypto-card>
+          }
+        } @else {
+          <!-- Skeleton Loading State -->
+          @for (item of skeletonItems; track $index) {
+             <div class="skeleton-card">
+               <div class="skeleton-header">
+                 <div class="skeleton-title"></div>
+                 <div class="skeleton-price"></div>
+               </div>
+               <div class="skeleton-graph"></div>
+               <div class="skeleton-stats"></div>
+             </div>
+          }
         }
       </div>
     </div>
@@ -81,6 +96,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private cryptoService = inject(CryptoDataService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private titleService = inject(Title); // Inyección del servicio Title
 
   private priceSub?: Subscription;
   private timerSub?: Subscription;
@@ -89,16 +105,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Signals for state management
   readonly rawPrices = signal<CryptoAsset[]>([]);
   readonly marketStats = signal<WorkerResponse[]>([]);
+  readonly statusMessage = signal<string>('');
 
-  // Tab State
-  readonly activeTab = signal<'sim' | 'real'>('sim');
+  // Tab State - Inicializado síncronamente desde la URL para persistencia
+  readonly activeTab = signal<'sim' | 'real'>(
+    (this.route.snapshot.queryParamMap.get('tab') as 'sim' | 'real') || 'sim'
+  );
   readonly nextUpdateIn = signal<number>(10);
 
-  // Search Filter State (Comentado como pediste)
-  readonly searchTerm = signal<string>(''); // Almacena el texto del buscador
+  // Search Filter State 
+  readonly searchTerm = signal<string>('');
+  readonly skeletonItems = Array(5).fill(0);
 
   // Computed Signal: Filtra rawPrices basado en searchTerm
-  // Se actualiza automáticamente cuando cambia rawPrices O searchTerm
   readonly filteredPrices = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const prices = this.rawPrices();
@@ -113,18 +132,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.initWorker();
+
+    // UX: Dynamic Browser Ticker
+    // Este effect se ejecuta cada vez que 'rawPrices' cambia
+    effect(() => {
+      const prices = this.rawPrices();
+      const btc = prices.find(p => p.id === 'bitcoin');
+
+      if (btc && btc.price > 0) {
+        // Formato: $95,430.20 | BTC/USDT - CryptoAngular
+        const priceFormatted = btc.price.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        this.titleService.setTitle(`$${priceFormatted} | BTC/USDT - Monitor`);
+      } else {
+        this.titleService.setTitle('Monitor de Criptomonedas');
+      }
+    });
   }
 
   ngOnInit() {
-    // Read query params to determine initial mode
-    const tabParam = this.route.snapshot.queryParamMap.get('tab');
-
-    // Force start based on param
-    if (tabParam === 'real') {
-      this.activeTab.set('real');
+    // Iniciar lógica basada en el tab ya cargado
+    if (this.activeTab() === 'real') {
+      this.statusMessage.set('⏳ Conectando con Binance API...');
       this.startRealMarket();
     } else {
-      this.activeTab.set('sim');
+      this.statusMessage.set('🔄 Iniciando motor de simulación...');
       this.startSimulation();
     }
   }
@@ -147,8 +181,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.rawPrices.set([]); // Limpiar vista momentáneamente
 
     if (mode === 'sim') {
+      this.statusMessage.set('🔄 Iniciando motor de simulación...');
       this.startSimulation();
     } else {
+      this.statusMessage.set('⏳ Sincronizando con Binance API (Proxy/Direct)...');
       this.startRealMarket();
     }
   }
@@ -162,30 +198,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private startSimulation() {
     this.priceSub = this.cryptoService.getSimulatedPrices().subscribe({
-      next: (prices) => this.handleDataUpdate(prices),
-      error: (err) => console.error('Simulation Error:', err)
+      next: (prices) => {
+        this.statusMessage.set(''); // Ocultar al recibir datos
+        this.handleDataUpdate(prices);
+      },
+      error: (err) => this.statusMessage.set('⚠️ Error en simulación')
     });
   }
 
   private startRealMarket() {
-    // 1. Iniciar subscripción de datos
+    // 1. Iniciar subscripción de datos (Hydration + Polling)
     this.priceSub = this.cryptoService.getRealPrices().subscribe({
       next: (prices) => {
-        this.handleDataUpdate(prices);
+        // Si recibimos un array vacío (error controlado), avisamos
+        if (prices.length === 0) {
+          this.statusMessage.set('⚠️ Sin datos: Verificando conexión...');
+        } else {
+          this.statusMessage.set(''); // Todo OK
+          this.handleDataUpdate(prices);
+        }
         this.resetTimer();
       },
-      error: (err) => console.error('API Error:', err)
+      error: (err) => this.statusMessage.set('⚠️ Error Crítico de API')
     });
 
-    // 2. Iniciar Timer visual (solo cosmético)
-    this.resetTimer(); // Para iniciar en 10
+    // 2. Iniciar Timer visual
+    this.resetTimer();
     this.timerSub = interval(1000).subscribe(() => {
-      this.nextUpdateIn.update(v => v > 0 ? v - 1 : 10);
+      this.nextUpdateIn.update(v => v > 0 ? v - 1 : 5);
     });
   }
 
   private resetTimer() {
-    this.nextUpdateIn.set(10);
+    this.nextUpdateIn.set(5);
   }
 
   private handleDataUpdate(prices: CryptoAsset[]) {

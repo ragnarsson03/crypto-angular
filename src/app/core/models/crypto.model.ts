@@ -7,9 +7,10 @@ export interface CryptoAsset {
     high24h: number;
     low24h: number;
     history: number[];
+    threshold?: number | null;
+    isAlertActive?: boolean;
 }
 
-// Esta es la clave para reparar tu error
 export interface WorkerData {
     action: 'CALCULATE_STATS';
     payload: CryptoAsset[];
@@ -21,7 +22,11 @@ export interface WorkerResponse {
     volatility: number;
 }
 
-export interface BinanceTickerDto {
+export interface BinanceTickerResponse {
     symbol: string;
-    price: string;
+    lastPrice: string;
+    priceChangePercent: string;
+    volume: string;
+    highPrice: string;
+    lowPrice: string;
 }
