@@ -1,7 +1,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { interval, map, Observable, switchMap, timer, catchError, of, forkJoin, merge } from 'rxjs';
+import { interval, map, Observable, switchMap, timer, catchError, of, tap, forkJoin, merge } from 'rxjs';
 import { CryptoAsset } from '../models/crypto.model';
 
 @Injectable({
@@ -42,32 +42,33 @@ export class CryptoDataService {
     }
 
     // --- MODO: Simulación (Hydrated from Real Market) ---
+    // --- MODO: Simulación (Hydrated from Real Market) ---
     getSimulatedPrices(): Observable<CryptoAsset[]> {
         // 1. Verificar si necesitamos hidratación inicial con precios reales
         const needsHydration = this.assetsCache.get('bitcoin')?.price === 0;
 
-        if (needsHydration) {
-            // 2. Primero obtenemos los precios REALES de Binance
-            return this.fetchRealTimeTicker().pipe(
-                catchError(err => {
-                    // Si falla la API, usamos fallback de semillas mock
-                    console.warn('⚠️ API hydration failed. Using fallback seeds for simulation.');
+        const source$ = needsHydration ? this.fetchRealTimeTicker() : of([]);
+
+        return source$.pipe(
+            // 2. Verificación de Seguridad: Asegurar que tenemos datos
+            tap((results: CryptoAsset[]) => {
+                const stillEmpty = this.assetsCache.get('bitcoin')?.price === 0;
+                if (needsHydration && (results?.length === 0 || stillEmpty)) {
+                    console.warn('⚠️ API Hydration empty/failed. Enforcing fallback seeds.');
                     this.seedSimulationData();
-                    return of(Array.from(this.assetsCache.values()));
-                }),
-                switchMap(() => {
-                    // 3. Una vez hidratado, iniciamos el motor de simulación
-                    return timer(0, 200).pipe(
-                        map(() => this.updateSimulationStep())
-                    );
-                })
-            );
-        } else {
-            // Ya tenemos precios (cambio de pestaña), continuamos simulación
-            return timer(0, 200).pipe(
-                map(() => this.updateSimulationStep())
-            );
-        }
+                }
+            }),
+            catchError(() => {
+                this.seedSimulationData();
+                return of([]);
+            }),
+            switchMap(() => {
+                // 3. Iniciar motor de simulación
+                return timer(0, 200).pipe(
+                    map(() => this.updateSimulationStep())
+                );
+            })
+        );
     }
 
     // --- MODO: Mercado Real ---

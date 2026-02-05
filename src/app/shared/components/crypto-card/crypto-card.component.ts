@@ -22,16 +22,33 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
       </div>
       
       <!-- Sparkline Graph -->
-      <div class="sparkline-container" *ngIf="asset.history.length > 1">
-        <svg viewBox="0 0 100 50" preserveAspectRatio="none">
+      <div class="sparkline-container">
+         <svg *ngIf="asset.history.length > 1" viewBox="0 0 100 50" preserveAspectRatio="none">
+           <defs>
+             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+               <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+               <feMerge>
+                   <feMergeNode in="coloredBlur"/>
+                   <feMergeNode in="SourceGraphic"/>
+               </feMerge>
+             </filter>
+           </defs>
+           
            <polyline 
              [attr.points]="sparklinePoints()" 
              fill="none" 
-             [attr.stroke]="asset.changePercent >= 0 ? '#00e676' : '#ff0055'" 
+             [attr.stroke]="asset.changePercent >= 0 ? '#00e676' : '#ff1744'" 
              stroke-width="2"
+             stroke-linecap="round"
+             stroke-linejoin="round"
              vector-effect="non-scaling-stroke"
+             filter="url(#glow)"
            />
-        </svg>
+         </svg>
+         <!-- Empty/Loading State Line -->
+         <svg *ngIf="asset.history.length <= 1" viewBox="0 0 100 50" preserveAspectRatio="none">
+            <line x1="0" y1="25" x2="100" y2="25" stroke="#444" stroke-width="1" stroke-dasharray="4"/>
+         </svg>
       </div>
 
       <div class="stats">
@@ -45,7 +62,7 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
         </div>
         <div class="stat-row">
           <span class="label">Volatilidad:</span>
-          <span class="value">{{ stats?.volatility | number:'1.2-5' }}</span>
+          <span class="value">{{ stats?.volatility | number:'1.2-4' }}</span>
         </div>
       </div>
 
