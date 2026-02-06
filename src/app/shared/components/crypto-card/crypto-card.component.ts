@@ -67,20 +67,18 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
       </div>
 
       <!-- Sección de Alerta (Con signo $ y comas) -->
-      <div class="pt-4 border-t border-[#333]">
-        <label class="block text-[10px] uppercase tracking-wider text-[#888] mb-2 font-black">
-          Alerta (Umbral en USD)
-        </label>
-        
-        <div class="relative group flex items-start gap-2 h-[42px]">
-          <!-- Input wrapper -->
-          <div class="relative flex-1 h-full">
-            <span 
-              *ngIf="displayValue()" 
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-[#888] font-mono text-sm pointer-events-none text-xl"
-            >
-              $
+      <div class="alert-section">
+        <div class="alert-header">
+            <label>Alerta (Umbral en USD)</label>
+            <span class="orders-count">
+              Órdenes activas: {{ activeOrdersCount() }}
             </span>
+        </div>
+        
+        <div class="input-group">
+          <!-- Input wrapper -->
+          <div class="input-wrapper">
+            <span *ngIf="displayValue()" class="currency-symbol">$</span>
 
             <input 
               #thresholdInput
@@ -90,14 +88,8 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
               (input)="onInput(thresholdInput)"
               (keyup.enter)="onConfirm(thresholdInput.value)"
               (blur)="onConfirm(thresholdInput.value)"
-              class="w-full h-full bg-[#2a2a2a] text-white font-mono rounded-md border transition-all duration-300 outline-none placeholder:text-gray-600 focus:bg-[#333]"
-              [class.pl-8]="displayValue()"
-              [class.px-3]="!displayValue()"
-              [class.border-[#444]]="!isArmed()"
-              [class.border-[#00e676]]="isArmed()"
-              [class.ring-1]="isArmed()"
-              [class.ring-[#00e676]]="isArmed()"
-              [class.shadow-[0_0_15px_rgba(0,230,118,0.2)]]="isArmed()"
+              [class.has-value]="displayValue()"
+              [class.is-armed]="isArmed()"
             />
           </div>
 
@@ -105,26 +97,16 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
           <button 
             (click)="commitThresholdFromButton()"
             [disabled]="!displayValue() || isArmed()"
-            class="h-full aspect-square flex items-center justify-center rounded-md border transition-all duration-200"
-            [class.bg-[#00e676]]="displayValue() && !isArmed()"
-            [class.border-[#00e676]]="displayValue() && !isArmed()"
-            [class.text-black]="displayValue() && !isArmed()"
-            [class.bg-[#2a2a2a]]="!displayValue() || isArmed()"
-            [class.border-[#444]]="!displayValue() || isArmed()"
-            [class.text-[#666]]="!displayValue() || isArmed()"
-            [class.cursor-pointer]="displayValue() && !isArmed()"
-            [class.cursor-not-allowed]="!displayValue() || isArmed()"
-            [class.hover:bg-[#00c853]]="displayValue() && !isArmed()"
-            [class.hover:shadow-[0_0_10px_rgba(0,230,118,0.4)]]="displayValue() && !isArmed()"
+            [class.active]="displayValue() && !isArmed()"
             [title]="isArmed() ? 'Alerta Activa' : 'Activar Alerta'">
             
             <!-- Icon: Bell check (Active) -->
-            <svg *ngIf="isArmed()" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#00e676]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <svg *ngIf="isArmed()" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
 
             <!-- Icon: Bell (Inactive) -->
-            <svg *ngIf="!isArmed()" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg *ngIf="!isArmed()" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
           </button>
@@ -148,6 +130,9 @@ export class CryptoCardComponent implements OnInit {
 
   // Visual state
   readonly isArmed = signal<boolean>(false);
+
+  // Active orders counter
+  readonly activeOrdersCount = signal<number>(0);
 
   // Computed signal for display formatting
   readonly displayValue = computed(() => {
@@ -224,5 +209,7 @@ export class CryptoCardComponent implements OnInit {
 
   private triggerSuccessFeedback() {
     this.isArmed.set(true);
+    // Increment active orders count
+    this.activeOrdersCount.update(c => c + 1);
   }
 }
