@@ -1,59 +1,101 @@
-# CryptoAngular
+# 🚀 Plataforma de Monitoreo de Criptoactivos en Tiempo Real
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.5.
+> Sistema de monitoreo financiero de alta frecuencia (HFT) desarrollado con **Angular 21 (Experimental)**, **Signals** y **Web Workers**.
 
-## Development server
+![Dashboard Preview](doc/images/image1.png)
 
-To start a local development server, run:
+## 📖 Descripción del Proyecto
 
-```bash
-ng serve
-```
+Este proyecto es una **Single Page Application (SPA)** diseñada para simular una terminal de trading profesional. Su objetivo principal es demostrar cómo manejar flujos de datos de alta velocidad (actualizaciones cada **200ms**) manteniendo una interfaz de usuario fluida a **60 FPS**.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Para lograr esto, hemos abandonado las técnicas tradicionales de detección de cambios en favor de una arquitectura reactiva pura basada en **Signals** y el procesamiento paralelo mediante **Web Workers**.
 
-## Code scaffolding
+### ✨ Características Principales
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+*   **⚡ Rendimiento Extremo**: Actualización de precios en tiempo real sin bloquear la UI.
+*   **🧠 Arquitectura Reactiva**: Uso exclusivo de **Angular Signals** para el estado de la vista (sin Zone.js overhead).
+*   **🧵 Multithreading**: Cálculos matemáticos complejos (SMA, Volatilidad) delegados a un **Web Worker**.
+*   **🎨 Diseño High Fidelity**: Interfaz "Cyberpunk/Neon" con modos de simulación y mercado real.
+*   **📈 Gráficos SVG Nativos**: Sparklines generados matemáticamente en tiempo real sin librerías externas.
+*   **🔔 Sistema de Alertas**: Monitoreo de precios con feedback visual instantáneo.
 
-```bash
-ng generate component component-name
-```
+## 🛠️ Stack Tecnológico
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+| Tecnología | Versión | Propósito |
+| :--- | :--- | :--- |
+| **Angular** | v21 (Exp) | Core Framework & Signals |
+| **TypeScript** | v5.9 (Beta) | Tipado Estático Avanzado |
+| **BInance API** | v3 | Fuente de datos para mercado real |
+| **Web Workers** | API Nativa | Procesamiento en segundo plano |
+| **SCSS** | Dart | Estilos modulares y temas |
+| **Vite** | Latest | Build System de nueva generación |
 
-```bash
-ng generate --help
-```
+## 📂 Estructura del Proyecto
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Organización modular siguiendo los principios de **Smart & Dumb Components**:
 
 ```bash
-ng test
+src/
+├── app/
+│   ├── core/
+│   │   ├── models/          # Interfaces (CryptoAsset, WorkerData)
+│   │   ├── services/        # CryptoDataService (Data Feed)
+│   │   └── workers/         # crypto-processor.worker.ts (Lógica Matemática)
+│   ├── features/
+│   │   └── dashboard/       # Smart Component (Orquestador)
+│   └── shared/
+│       ├── components/
+│       │   └── crypto-card/ # Dumb Component (Presentacional - SVG Sparklines)
+│       └── directives/      # highlight-change.directive.ts (Optimizaciones DOM)
 ```
 
-## Running end-to-end tests
+## 🚀 Instalación y Ejecución
 
-For end-to-end (e2e) testing, run:
+Sigue estos pasos para levantar el entorno de desarrollo:
 
-```bash
-ng e2e
-```
+1.  **Clonar el repositorio**:
+    ```bash
+    git clone https://github.com/tu-usuario/crypto-angular.git
+    cd crypto-angular
+    ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+2.  **Instalar dependencias**:
+    ```bash
+    npm install
+    ```
 
-## Additional Resources
+3.  **Iniciar el servidor de desarrollo**:
+    ```bash
+    npm start
+    ```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+4.  **Abrir en el navegador**:
+    Visita `http://localhost:4200/` para ver la aplicación en acción.
+
+## 🧪 Modos de Operación
+
+La plataforma cuenta con dos modos de funcionamiento seleccionables desde el Dashboard:
+
+![Modos de Operación](doc/images/image2.png)
+
+1.  **⚡ Modo Simulación**: Genera un flujo de datos sintético local para pruebas de estrés y validación de la UI (Ideal para demos offline).
+2.  **🌍 Mercado Real**: Se conecta a la API pública de Binance para mostrar precios reales de BTC, ETH, SOL, etc.
+
+## 👥 Equipo de Desarrollo
+
+Proyecto desarrollado para la unidad curricular **Programación III** - UNETI (Trayecto 3).
+
+| Estudiante | Cédula | Rol |
+| :--- | :--- | :--- |
+| **Frederick Durán** | V-30.346.056 | Lead Architect & Signals |
+| **Juan Echenique** | V-30.829.758 | UI/UX & Styles |
+| **Juan Henríquez** | V-27.913.162 | Web Workers Implementation |
+| **Jonathan Alvarado** | V-22.749.638 | Data Layer Service |
+| **Yesmir Guzmán** | V-20.130.682 | Documentation & QA |
+| **Miguel Eduardo** | V-6.914.378 | Integration Testing |
+
+---
+
+<p align="center">
+  Hecho con ❤️ y ☕ usando <strong>Angular 21</strong>
+</p>
