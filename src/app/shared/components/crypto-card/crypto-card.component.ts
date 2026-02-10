@@ -9,8 +9,11 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
   imports: [CommonModule, HighlightChangeDirective],
   template: `
     <div class="card" [ngClass]="{'alert-pulse': stats?.isAlertActive}">
-      <div class="header">
-        <h3>{{ asset.id | titlecase }} <span class="symbol">({{ asset.symbol }})</span></h3>
+      <!-- Section 1: Info & Price -->
+      <div class="section info">
+        <div class="header">
+          <h3>{{ asset.id | titlecase }} <span class="symbol">({{ asset.symbol }})</span></h3>
+        </div>
         <div class="price-block">
           <span class="price" [appHighlightChange]="asset.price">
             {{ asset.price | currency:'USD':'symbol':'1.2-2' }}
@@ -19,97 +22,89 @@ import { HighlightChangeDirective } from '../../directives/highlight-change.dire
             {{ asset.changePercent | number:'1.2-2' }}%
           </span>
         </div>
+        <div class="mini-stats">
+             <span class="label">Vol:</span>
+             <span class="value">{{ asset.volume | currency:'USD':'symbol':'1.0-0' }}</span>
+        </div>
       </div>
       
-      <!-- Sparkline Graph -->
-      <div class="sparkline-container">
-         <svg *ngIf="asset.history.length > 1" viewBox="0 0 100 50" preserveAspectRatio="none">
-           <defs>
-             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-               <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-               <feMerge>
-                   <feMergeNode in="coloredBlur"/>
-                   <feMergeNode in="SourceGraphic"/>
-               </feMerge>
-             </filter>
-           </defs>
-           
-           <polyline 
-             [attr.points]="sparklinePoints()" 
-             fill="none" 
-             [attr.stroke]="asset.changePercent >= 0 ? '#00e676' : '#ff1744'" 
-             stroke-width="2"
-             stroke-linecap="round"
-             stroke-linejoin="round"
-             vector-effect="non-scaling-stroke"
-             filter="url(#glow)"
-           />
-         </svg>
-         <!-- Empty/Loading State Line -->
-         <svg *ngIf="asset.history.length <= 1" viewBox="0 0 100 50" preserveAspectRatio="none">
-            <line x1="0" y1="25" x2="100" y2="25" stroke="#444" stroke-width="1" stroke-dasharray="4"/>
-         </svg>
+      <!-- Section 2: Chart (Flex Grow) -->
+      <div class="section chart">
+         <div class="sparkline-container">
+           <svg *ngIf="asset.history.length > 1" viewBox="0 0 100 50" preserveAspectRatio="none">
+             <defs>
+               <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                 <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                 <feMerge>
+                     <feMergeNode in="coloredBlur"/>
+                     <feMergeNode in="SourceGraphic"/>
+                 </feMerge>
+               </filter>
+             </defs>
+             
+             <polyline 
+               [attr.points]="sparklinePoints()" 
+               fill="none" 
+               [attr.stroke]="asset.changePercent >= 0 ? '#00e676' : '#ff1744'" 
+               stroke-width="2"
+               stroke-linecap="round"
+               stroke-linejoin="round"
+               vector-effect="non-scaling-stroke"
+               filter="url(#glow)"
+             />
+           </svg>
+           <svg *ngIf="asset.history.length <= 1" viewBox="0 0 100 50" preserveAspectRatio="none">
+              <line x1="0" y1="25" x2="100" y2="25" stroke="#444" stroke-width="1" stroke-dasharray="4"/>
+           </svg>
+         </div>
       </div>
 
-      <div class="stats">
-        <div class="stat-row">
-          <span class="label">Vol (24h):</span>
-          <span class="value">{{ asset.volume | currency:'USD':'symbol':'1.0-0' }}</span>
-        </div>
-        <div class="stat-row">
-          <span class="label">SMA:</span>
-          <span class="value">{{ stats?.sma | currency:'USD':'symbol':'1.2-2' }}</span>
-        </div>
-        <div class="stat-row">
-          <span class="label">Volatilidad:</span>
-          <span class="value">{{ stats?.volatility | number:'1.2-4' }}</span>
-        </div>
-      </div>
-
-      <!-- Sección de Alerta (Con signo $ y comas) -->
-      <div class="alert-section">
-        <div class="alert-header">
-            <label>Alerta (Umbral en USD)</label>
-            <span class="orders-count">
-              Órdenes activas: {{ activeOrdersCount() }}
-            </span>
-        </div>
-        
-        <div class="input-group">
-          <!-- Input wrapper -->
-          <div class="input-wrapper">
-            <span *ngIf="displayValue()" class="currency-symbol">$</span>
-
-            <input 
-              #thresholdInput
-              type="text"
-              [value]="displayValue()"
-              placeholder="Min Precio (ej: 50,000)"
-              (input)="onInput(thresholdInput)"
-              (keyup.enter)="onConfirm(thresholdInput.value)"
-              (blur)="onConfirm(thresholdInput.value)"
-              [class.has-value]="displayValue()"
-              [class.is-armed]="isArmed()"
-            />
+      <!-- Section 3: Detailed Stats & Actions -->
+      <div class="section actions">
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="label">SMA:</span>
+            <span class="value">{{ stats?.sma | currency:'USD':'symbol':'1.2-2' }}</span>
           </div>
+          <div class="stat-item">
+            <span class="label">Volatilidad:</span>
+            <span class="value">{{ stats?.volatility | number:'1.2-4' }}</span>
+          </div>
+        </div>
 
-          <!-- Button -->
-          <button 
-            (click)="commitThresholdFromButton()"
-            [disabled]="!displayValue() || isArmed()"
-            [class.active]="displayValue() && !isArmed()"
-            [title]="isArmed() ? 'Alerta Activa' : 'Activar Alerta'">
-            
-            <!-- Icon: Bell check (Active) -->
-            <svg *ngIf="isArmed()" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-
-            <!-- Icon: Bell (Inactive) -->
-            <svg *ngIf="!isArmed()" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </button>
+        <!-- Alerta Compacta -->
+        <div class="alert-compact">
+            <div class="input-group">
+                <div class="input-wrapper">
+                  <span *ngIf="displayValue()" class="currency-symbol">$</span>
+                  <input 
+                    #thresholdInput
+                    type="text"
+                    [value]="displayValue()"
+                    placeholder="Alerta Precio"
+                    (input)="onInput(thresholdInput)"
+                    (keyup.enter)="onConfirm(thresholdInput.value)"
+                    (blur)="onConfirm(thresholdInput.value)"
+                    [class.has-value]="displayValue()"
+                    [class.is-armed]="isArmed()"
+                  />
+                </div>
+                <button 
+                  (click)="commitThresholdFromButton()"
+                  [disabled]="!displayValue() || isArmed()"
+                  [class.active]="displayValue() && !isArmed()"
+                  [title]="isArmed() ? 'Alerta Activa' : 'Activar Alerta'">
+                  <svg *ngIf="isArmed()" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <svg *ngIf="!isArmed()" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </button>
+            </div>
+             <div class="orders-hint" *ngIf="activeOrdersCount() > 0">
+              {{ activeOrdersCount() }} activa(s)
+            </div>
         </div>
       </div>
     </div>
